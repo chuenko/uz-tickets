@@ -24,22 +24,23 @@ def buy_link(route: dict) -> str:
 
 def fmt_status(trains: list[dict], route: dict) -> str:
     link = buy_link(route)
+    # лише поїзди, де є вільні місця
+    avail = [t for t in trains if t["total_free"] > 0]
     head = (
         f"📋 <b>{route['from_name']} → {route['to_name']}</b>  📅 {route['date']}\n"
-        f"Поїздів: {len(trains)}\n{'─' * 26}"
+        f"З місцями: {len(avail)} із {len(trains)}\n{'─' * 26}"
     )
     parts = [head]
-    for t in trains:
+    if not avail:
+        parts.append("😕 Зараз вільних місць немає. Стежу — пінгну, щойно з'являться.")
+    for t in avail:
         lines = [f"🚂 <b>№{t['number']}</b>  🕐 {t['departure']} → {t['arrival']}"]
-        if t["seats"]:
-            for code, info in t["seats"].items():
-                icon = "✅" if info["seats"] > 0 else "❌"
-                price = f"від {info['price']} грн" if info["price"] else "—"
-                lines.append(
-                    f"  {icon} {info['title']} ({code}): <b>{info['seats']}</b> місць, {price}"
-                )
-        else:
-            lines.append("  ❌ Місць немає")
+        # лише вагони з місцями
+        for code, info in t["seats"].items():
+            if info["seats"] <= 0:
+                continue
+            price = f"від {info['price']} грн" if info["price"] else "—"
+            lines.append(f"  ✅ {info['title']} ({code}): <b>{info['seats']}</b> місць, {price}")
         parts.append("\n".join(lines))
     parts.append(
         f"⏱ {datetime.now():%H:%M:%S}  🔗 <a href='{link}'>Відкрити на UZ</a>"
@@ -125,7 +126,10 @@ class UZMonitor:
 
     async def fetch_status_json(self, route: dict) -> dict:
         trains = await self._get_trains(route)
-        return {"ok": trains is not None, "trains": trains or []}
+        if trains is None:
+            return {"ok": False, "trains": []}
+        # лише поїзди з вільними місцями
+        return {"ok": True, "trains": [t for t in trains if t["total_free"] > 0]}
 
     async def close(self):
         await self.fetcher.close()
