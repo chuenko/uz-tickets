@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>UZ Tickets</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="config.js"></script>
+</head>
+<body>
+  <header>
+    <h1>🚂 UZ Tickets</h1>
+    <div id="sub">Моніторинг місць</div>
+  </header>
+
+  <main id="app">
+    <!-- Список маршрутів -->
+    <section id="view-list">
+      <button class="primary" id="btn-add">➕ Додати маршрут</button>
+      <div id="routes"></div>
+    </section>
+
+    <!-- Майстер додавання -->
+    <section id="view-add" hidden>
+      <div class="step" id="step-from">
+        <label>Станція відправлення</label>
+        <input id="from-q" placeholder="Напр.: Київ, Львів, Варшава" autocomplete="off" />
+        <div class="results" id="from-results"></div>
+      </div>
+
+      <div class="step" id="step-to" hidden>
+        <div class="picked" id="picked-from"></div>
+        <label>Станція призначення</label>
+        <input id="to-q" placeholder="Напр.: Львів, Краків" autocomplete="off" />
+        <div class="results" id="to-results"></div>
+      </div>
+
+      <div class="step" id="step-date" hidden>
+        <div class="picked" id="picked-to"></div>
+        <label>Дата</label>
+        <input id="date" type="date" />
+        <label>Тип вагона (необов'язково)</label>
+        <div class="chips" id="wagons">
+          <span class="chip" data-code="П">Плацкарт</span>
+          <span class="chip" data-code="К">Купе</span>
+          <span class="chip" data-code="Л">Люкс/СВ</span>
+          <span class="chip" data-code="С">Сидячий</span>
+          <span class="chip" data-code="О">Загальний</span>
+        </div>
+        <button class="primary" id="btn-save">✅ Зберегти маршрут</button>
+      </div>
+
+      <button class="ghost" id="btn-cancel">Скасувати</button>
+    </section>
+
+    <!-- Статус -->
+    <section id="view-status" hidden>
+      <div id="status-head"></div>
+      <div id="status-body"></div>
+      <button class="ghost" id="btn-back">🔙 Назад</button>
+    </section>
+  </main>
+
+  <div id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
