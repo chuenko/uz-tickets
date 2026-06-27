@@ -102,7 +102,6 @@ class UZFetcher:
 
     def __init__(self):
         self._pw = None
-        self._browser = None
         self.context: Optional[BrowserContext] = None
         self._start_lock = asyncio.Lock()
 
@@ -111,20 +110,21 @@ class UZFetcher:
             if self.context is not None:
                 return
             self._pw = await async_playwright().start()
-            launch_kwargs = {
+            # Постійний профіль: зберігає логін UZ і clearance Cloudflare між запусками.
+            kwargs = {
+                "user_data_dir": config.USER_DATA_DIR,
                 "headless": config.HEADLESS,
                 "args": ["--no-sandbox", "--disable-dev-shm-usage"],
+                "locale": "uk-UA",
+                "user_agent": _UA,
             }
             proxy = _proxy_opts()
             if proxy:
-                launch_kwargs["proxy"] = proxy
+                kwargs["proxy"] = proxy
                 log.info("Браузер через проксі: %s", proxy["server"])
-            self._browser = await self._pw.chromium.launch(**launch_kwargs)
-            self.context = await self._browser.new_context(
-                locale="uk-UA", user_agent=_UA,
-            )
-            log.info("Браузер запущено (headless=%s, proxy=%s)",
-                     config.HEADLESS, bool(proxy))
+            self.context = await self._pw.chromium.launch_persistent_context(**kwargs)
+            log.info("Браузер запущено (профіль=%s, headless=%s, proxy=%s)",
+                     config.USER_DATA_DIR, config.HEADLESS, bool(proxy))
 
     async def fetch(self, from_id: str, to_id: str, date: str) -> Optional[dict]:
         """Повертає сирий JSON відповіді /api/v3/trips або None."""
@@ -180,8 +180,6 @@ class UZFetcher:
     async def close(self):
         if self.context:
             await self.context.close()
-        if self._browser:
-            await self._browser.close()
         if self._pw:
             await self._pw.stop()
         self.context = None

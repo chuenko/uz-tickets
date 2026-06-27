@@ -1,6 +1,8 @@
 .env
 *.db
 *.log
+uz_profile/
+raw_trips.json
 __pycache__/
 *.pyc
 node_modules/

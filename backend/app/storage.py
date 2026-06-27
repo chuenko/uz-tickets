@@ -35,6 +35,17 @@ def init() -> None:
         )
         """
     )
+    # міграції під автобронь (ignore якщо колонка вже є)
+    for ddl in (
+        "ALTER TABLE routes ADD COLUMN autobron INTEGER DEFAULT 0",
+        "ALTER TABLE routes ADD COLUMN seat_kind TEXT DEFAULT ''",   # kupe/plats/intercity1/intercity2
+        "ALTER TABLE routes ADD COLUMN qty INTEGER DEFAULT 1",
+        "ALTER TABLE routes ADD COLUMN passengers TEXT DEFAULT '[]'",  # [{"name","surname"}]
+    ):
+        try:
+            _conn.execute(ddl)
+        except sqlite3.OperationalError:
+            pass
     _conn.commit()
 
 
@@ -105,6 +116,17 @@ def set_active(key: str, active: bool) -> None:
         _conn.commit()
 
 
+def set_autobron(key: str, enabled: bool, seat_kind: str = "",
+                 qty: int = 1, passengers: list[dict] | None = None) -> None:
+    with _lock:
+        _conn.execute(
+            "UPDATE routes SET autobron=?, seat_kind=?, qty=?, passengers=? WHERE key=?",
+            (1 if enabled else 0, seat_kind, qty,
+             json.dumps(passengers or [], ensure_ascii=False), key),
+        )
+        _conn.commit()
+
+
 def save_snapshot(key: str, snapshot: dict) -> None:
     with _lock:
         _conn.execute(
@@ -117,8 +139,13 @@ def save_snapshot(key: str, snapshot: dict) -> None:
 def _row_to_dict(row: sqlite3.Row) -> dict:
     d = dict(row)
     d["active"] = bool(d["active"])
+    d["autobron"] = bool(d.get("autobron", 0))
     try:
         d["snapshot"] = json.loads(d.get("snapshot") or "{}")
     except (json.JSONDecodeError, TypeError):
         d["snapshot"] = {}
+    try:
+        d["passengers"] = json.loads(d.get("passengers") or "[]")
+    except (json.JSONDecodeError, TypeError):
+        d["passengers"] = []
     return d

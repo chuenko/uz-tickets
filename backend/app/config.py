@@ -48,6 +48,8 @@ HOST = os.getenv("HOST", "0.0.0.0")
 
 # ── Сховище ───────────────────────────────────
 DB_PATH = os.getenv("DB_PATH", "uz_bot.db")
+# Постійний профіль браузера (зберігає логін UZ + клиренс Cloudflare).
+USER_DATA_DIR = os.getenv("USER_DATA_DIR", "uz_profile")
 
 # ── UZ ────────────────────────────────────────
 BASE_URL = "https://booking.uz.gov.ua"
