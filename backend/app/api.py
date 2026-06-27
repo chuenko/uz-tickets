@@ -29,6 +29,8 @@ def _verify_init_data(init_data: str) -> dict:
     received_hash = pairs.pop("hash", None)
     if not received_hash:
         raise HTTPException(401, "no hash")
+    # Нове поле signature (Ed25519) не входить у легасі HMAC-hash — виключаємо.
+    pairs.pop("signature", None)
 
     check_string = "\n".join(f"{k}={pairs[k]}" for k in sorted(pairs))
     secret = hmac.new(b"WebAppData", config.TELEGRAM_BOT_TOKEN.encode(), hashlib.sha256).digest()
