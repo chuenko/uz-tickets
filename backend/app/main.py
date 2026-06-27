@@ -35,6 +35,13 @@ async def main():
     monitor = UZMonitor(bot)
     setup_handlers(dp)
 
+    # Діагностика: показуємо, який саме бот відповідає цьому токену.
+    try:
+        me = await bot.get_me()
+        log.info("Токен належить боту: @%s (id=%s)", me.username, me.id)
+    except Exception as e:
+        log.error("Невірний TELEGRAM_BOT_TOKEN? get_me впав: %s", e)
+
     app = create_app(monitor)
     server = uvicorn.Server(uvicorn.Config(
         app, host=config.HOST, port=config.PORT, log_level="info",
