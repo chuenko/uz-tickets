@@ -33,7 +33,7 @@ async def main():
     bot = Bot(token=config.TELEGRAM_BOT_TOKEN)
     dp = Dispatcher(storage=MemoryStorage())
     monitor = UZMonitor(bot)
-    setup_handlers(dp)
+    setup_handlers(dp, monitor)
 
     # Діагностика: показуємо, який саме бот відповідає цьому токену.
     try:
@@ -52,7 +52,7 @@ async def main():
     log.info("Бот + API + монітор запущено. Mini App: %s", config.WEBAPP_URL or "—")
 
     try:
-        await dp.start_polling(bot, allowed_updates=["message"])
+        await dp.start_polling(bot, allowed_updates=["message", "callback_query"])
     finally:
         monitor_task.cancel()
         server.should_exit = True

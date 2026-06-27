@@ -55,10 +55,8 @@ API_BASE = "https://app.uz.gov.ua"
 
 
 def validate() -> list[str]:
-    """Повертає список проблем конфігу (порожній = все ок)."""
+    """Повертає список критичних проблем конфігу (порожній = можна стартувати)."""
     problems = []
     if not TELEGRAM_BOT_TOKEN:
         problems.append("TELEGRAM_BOT_TOKEN не заданий")
-    if not WEBAPP_URL:
-        problems.append("WEBAPP_URL не заданий (URL Mini App на Vercel)")
-    return problems
+    return problems  # WEBAPP_URL потрібен лише для Mini App, для бота — ні
