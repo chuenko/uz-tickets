@@ -18,7 +18,19 @@ log = logging.getLogger(__name__)
 
 
 def _proxy_opts() -> Optional[dict]:
-    """Перетворює PROXY-рядок у dict для Playwright (server + опц. логін/пароль)."""
+    """Готує dict проксі для Playwright з PROXY_* (пріоритет) або PROXY-URL."""
+    # Варіант 2 — окремі змінні (надійніше для спецсимволів у паролі)
+    if config.PROXY_SERVER:
+        server = config.PROXY_SERVER
+        if "://" not in server:
+            server = "http://" + server
+        opts = {"server": server}
+        if config.PROXY_USERNAME:
+            opts["username"] = config.PROXY_USERNAME
+        if config.PROXY_PASSWORD:
+            opts["password"] = config.PROXY_PASSWORD
+        return opts
+    # Варіант 1 — один рядок-URL
     if not config.PROXY:
         return None
     u = urlparse(config.PROXY)
