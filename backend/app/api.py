@@ -36,6 +36,11 @@ def _verify_init_data(init_data: str) -> dict:
     secret = hmac.new(b"WebAppData", config.TELEGRAM_BOT_TOKEN.encode(), hashlib.sha256).digest()
     calc = hmac.new(secret, check_string.encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(calc, received_hash):
+        log.warning(
+            "bad signature | keys=%s | token_len=%s | recv=%s… | calc=%s…",
+            sorted(pairs), len(config.TELEGRAM_BOT_TOKEN),
+            received_hash[:10], calc[:10],
+        )
         raise HTTPException(401, "bad signature")
 
     try:
