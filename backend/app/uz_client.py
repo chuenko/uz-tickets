@@ -7,6 +7,7 @@ UZ закритий Cloudflare/reCAPTCHA, тому список рейсів д�
 import asyncio
 import logging
 from typing import Optional
+from urllib.parse import urlparse
 
 import aiohttp
 from playwright.async_api import async_playwright, BrowserContext
@@ -14,6 +15,23 @@ from playwright.async_api import async_playwright, BrowserContext
 from . import config
 
 log = logging.getLogger(__name__)
+
+
+def _proxy_opts() -> Optional[dict]:
+    """Перетворює PROXY-рядок у dict для Playwright (server + опц. логін/пароль)."""
+    if not config.PROXY:
+        return None
+    u = urlparse(config.PROXY)
+    if not u.hostname:
+        log.warning("PROXY заданий, але не розпарсився: %r", config.PROXY)
+        return None
+    scheme = u.scheme or "http"
+    opts = {"server": f"{scheme}://{u.hostname}:{u.port}" if u.port else f"{scheme}://{u.hostname}"}
+    if u.username:
+        opts["username"] = u.username
+    if u.password:
+        opts["password"] = u.password
+    return opts
 
 _UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -81,14 +99,20 @@ class UZFetcher:
             if self.context is not None:
                 return
             self._pw = await async_playwright().start()
-            self._browser = await self._pw.chromium.launch(
-                headless=config.HEADLESS,
-                args=["--no-sandbox", "--disable-dev-shm-usage"],
-            )
+            launch_kwargs = {
+                "headless": config.HEADLESS,
+                "args": ["--no-sandbox", "--disable-dev-shm-usage"],
+            }
+            proxy = _proxy_opts()
+            if proxy:
+                launch_kwargs["proxy"] = proxy
+                log.info("Браузер через проксі: %s", proxy["server"])
+            self._browser = await self._pw.chromium.launch(**launch_kwargs)
             self.context = await self._browser.new_context(
                 locale="uk-UA", user_agent=_UA,
             )
-            log.info("Браузер запущено (headless=%s)", config.HEADLESS)
+            log.info("Браузер запущено (headless=%s, proxy=%s)",
+                     config.HEADLESS, bool(proxy))
 
     async def fetch(self, from_id: str, to_id: str, date: str) -> Optional[dict]:
         """Повертає сирий JSON відповіді /api/v3/trips або None."""

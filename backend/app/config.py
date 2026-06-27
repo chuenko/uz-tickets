@@ -32,6 +32,11 @@ CHECK_INTERVAL = _int("CHECK_INTERVAL", 60)   # секунди між перев
 MAX_ROUTES = _int("MAX_ROUTES", 10)           # максимум активних маршрутів на юзера
 HEADLESS = os.getenv("HEADLESS", "true").lower() == "true"
 
+# Проксі для браузера (щоб обійти Cloudflare з чистого IP).
+# Формат: http://user:pass@host:port  або  socks5://host:port
+# Працює лише РЕЗИДЕНТНИЙ/мобільний; датацентровий Cloudflare ріже так само.
+PROXY = os.getenv("PROXY", "").strip()
+
 # ── Сервер API ────────────────────────────────
 PORT = _int("PORT", 8080)                      # Railway передає PORT автоматично
 HOST = os.getenv("HOST", "0.0.0.0")
