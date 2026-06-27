@@ -116,16 +116,30 @@ class UZFetcher:
         page.on("response", on_response)
         url = f"{config.BASE_URL}/search-trips/{from_id}/{to_id}/list?startDate={date}"
         try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+            await page.goto(url, wait_until="domcontentloaded", timeout=45_000)
             try:
-                await asyncio.wait_for(got.wait(), timeout=25)
+                await asyncio.wait_for(got.wait(), timeout=40)
             except asyncio.TimeoutError:
                 log.warning("Таймаут [%s→%s %s]", from_id, to_id, date)
+                await self._diagnose(page)
         except Exception as e:
             log.error("Навігація: %s", e)
         finally:
             await page.close()
         return result
+
+    async def _diagnose(self, page) -> None:
+        """На таймауті — з'ясувати, чи це Cloudflare-челендж."""
+        try:
+            title = await page.title()
+            body = (await page.content()).lower()
+            markers = ("cloudflare", "checking your browser", "challenge",
+                       "captcha", "attention required", "cf-")
+            hit = [m for m in markers if m in body]
+            log.warning("Diag: url=%s | title=%r | cloudflare-маркери=%s",
+                        page.url, title, hit or "немає")
+        except Exception as e:
+            log.warning("Diag не вдалось: %s", e)
 
     async def close(self):
         if self.context:

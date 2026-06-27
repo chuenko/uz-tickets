@@ -64,8 +64,6 @@ def _verify_init_data(init_data: str) -> dict:
             {n: h[:10] for n, h in candidates.items()},
         )
         raise HTTPException(401, "bad signature")
-    if match != "webapp_no_sig":
-        log.info("initData OK через варіант '%s' (не дефолтний)", match)
     pairs.pop("signature", None)
 
     try:
