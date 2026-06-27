@@ -18,6 +18,27 @@ from . import config, storage, uz_client
 log = logging.getLogger(__name__)
 
 
+def _hmac_hex(key: bytes, msg: str) -> str:
+    return hmac.new(key, msg.encode(), hashlib.sha256).hexdigest()
+
+
+def _candidate_hashes(pairs: dict) -> dict:
+    """Рахує hash кількома способами — щоб з'ясувати правильний алгоритм."""
+    token = config.TELEGRAM_BOT_TOKEN.encode()
+    webapp_secret = hmac.new(b"WebAppData", token, hashlib.sha256).digest()
+    login_secret = hashlib.sha256(token).digest()
+
+    p_no_sig = {k: v for k, v in pairs.items() if k != "signature"}
+    cs_no_sig = "\n".join(f"{k}={p_no_sig[k]}" for k in sorted(p_no_sig))
+    cs_with_sig = "\n".join(f"{k}={pairs[k]}" for k in sorted(pairs))
+
+    return {
+        "webapp_no_sig": _hmac_hex(webapp_secret, cs_no_sig),     # поточний (очікуваний)
+        "webapp_with_sig": _hmac_hex(webapp_secret, cs_with_sig),
+        "login_no_sig": _hmac_hex(login_secret, cs_no_sig),
+    }
+
+
 def _verify_init_data(init_data: str) -> dict:
     """Перевіряє підпис Telegram WebApp initData. Повертає user dict або кидає 401."""
     if not init_data:
@@ -32,19 +53,20 @@ def _verify_init_data(init_data: str) -> dict:
     if not received_hash:
         log.warning("no hash | keys=%s | len=%s", sorted(pairs), len(init_data))
         raise HTTPException(401, "no hash")
-    # Нове поле signature (Ed25519) не входить у легасі HMAC-hash — виключаємо.
-    pairs.pop("signature", None)
 
-    check_string = "\n".join(f"{k}={pairs[k]}" for k in sorted(pairs))
-    secret = hmac.new(b"WebAppData", config.TELEGRAM_BOT_TOKEN.encode(), hashlib.sha256).digest()
-    calc = hmac.new(secret, check_string.encode(), hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(calc, received_hash):
+    candidates = _candidate_hashes(pairs)
+    match = next((name for name, h in candidates.items() if hmac.compare_digest(h, received_hash)), None)
+    if match is None:
         log.warning(
-            "bad signature | keys=%s | token_len=%s | recv=%s… | calc=%s…",
-            sorted(pairs), len(config.TELEGRAM_BOT_TOKEN),
-            received_hash[:10], calc[:10],
+            "bad signature | keys=%s | token_len=%s | recv=%s… | candidates=%s",
+            sorted(k for k in pairs if k != "signature"),
+            len(config.TELEGRAM_BOT_TOKEN), received_hash[:10],
+            {n: h[:10] for n, h in candidates.items()},
         )
         raise HTTPException(401, "bad signature")
+    if match != "webapp_no_sig":
+        log.info("initData OK через варіант '%s' (не дефолтний)", match)
+    pairs.pop("signature", None)
 
     try:
         user = json.loads(pairs.get("user", "{}"))
