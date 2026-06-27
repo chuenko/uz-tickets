@@ -21,13 +21,16 @@ log = logging.getLogger(__name__)
 def _verify_init_data(init_data: str) -> dict:
     """Перевіряє підпис Telegram WebApp initData. Повертає user dict або кидає 401."""
     if not init_data:
+        log.warning("initData ПОРОЖНІЙ (len=0) — застосунок відкрито не як Mini App?")
         raise HTTPException(401, "no initData")
     try:
         pairs = dict(parse_qsl(init_data, strict_parsing=True))
     except ValueError:
+        log.warning("bad initData (len=%s): %.60s", len(init_data), init_data)
         raise HTTPException(401, "bad initData")
     received_hash = pairs.pop("hash", None)
     if not received_hash:
+        log.warning("no hash | keys=%s | len=%s", sorted(pairs), len(init_data))
         raise HTTPException(401, "no hash")
     # Нове поле signature (Ed25519) не входить у легасі HMAC-hash — виключаємо.
     pairs.pop("signature", None)

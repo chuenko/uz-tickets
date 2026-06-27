@@ -4,6 +4,23 @@ const INIT = tg?.initData || "";
 
 if (tg) { tg.ready(); tg.expand(); }
 
+// ── діагностика: показуємо стан Telegram WebApp ──
+(function diag() {
+  const sub = document.getElementById("sub");
+  if (!sub) return;
+  if (!tg) {
+    sub.textContent = "⚠️ Не в Telegram (SDK не завантажено)";
+    sub.style.color = "#e05c5c";
+    return;
+  }
+  const len = INIT.length;
+  sub.textContent = `${tg.platform} v${tg.version} · initData:${len}`;
+  if (len === 0) {
+    sub.textContent += " ⚠️ порожній";
+    sub.style.color = "#e05c5c";
+  }
+})();
+
 // ── helpers ───────────────────────────────────
 function $(id) { return document.getElementById(id); }
 function show(view) {
