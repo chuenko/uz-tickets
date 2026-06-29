@@ -137,8 +137,13 @@ button.bordered { background: var(--surface); color: var(--text); }
   font-size: 12px; font-weight: 800;
 }
 .back-button span {
-  width: 28px; height: 28px; display: grid; place-items: center;
-  color: #fff; background: var(--navy); border-radius: 9px; font-size: 16px;
+  width: 28px; height: 28px; flex: none; display: grid; place-items: center;
+  color: #fff; background: var(--navy); border-radius: 9px;
+}
+.back-button span svg {
+  width: 18px; height: 18px; display: block; overflow: visible;
+  fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
 }
 .add-route {
   min-height: 66px; justify-content: flex-start !important; padding: 11px 16px 11px 11px !important;
