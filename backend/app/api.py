@@ -136,6 +136,11 @@ def create_app(monitor) -> FastAPI:
         quiet_from: str | None = None
         quiet_to: str | None = None
         notify_on: str | None = None
+        autobron: bool | None = None
+        seat_kind: str | None = None
+        qty: int | None = None
+        passengers: list[dict] | None = None
+        seat_pick: list[int] | None = None
 
     @app.post("/api/routes/{key}/settings")
     async def update_settings(key: str, body: SettingsBody, x_init_data: str = Header(default="", alias="X-Init-Data")):
@@ -143,7 +148,14 @@ def create_app(monitor) -> FastAPI:
         route = storage.get_route(key)
         if not route or route["chat_id"] != chat_id:
             raise HTTPException(404, "not found")
-        storage.set_settings(key, **body.model_dump(exclude_none=True))
+        data = body.model_dump(exclude_none=True)
+        if data.get("notify_on") not in (None, "appear", "appear_decrease", "any"):
+            raise HTTPException(400, "bad notify_on")
+        if data.get("seat_kind") == "lux":
+            raise HTTPException(400, "Люкс/СВ недоступний для автоброні")
+        if "qty" in data and not 1 <= data["qty"] <= 4:
+            raise HTTPException(400, "qty must be 1..4")
+        storage.set_settings(key, **data)
         return {"ok": True}
 
     @app.post("/api/routes/{key}/active")

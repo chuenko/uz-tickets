@@ -55,7 +55,10 @@ def _compartment(seat: int) -> int:
     return (seat - 1) // 4
 
 
-def pick_seats(free: Iterable[int], kind: str, qty: int = 1) -> list[int]:
+def pick_seats(
+    free: Iterable[int], kind: str, qty: int = 1,
+    adjacent_pairs: Iterable[tuple[int, int]] | None = None,
+) -> list[int]:
     """Повертає до `qty` обраних місць за пріоритетом, або менше якщо бракує."""
     free = set(free)
     pr = _PRIORITY.get(kind)
@@ -78,5 +81,17 @@ def pick_seats(free: Iterable[int], kind: str, qty: int = 1) -> list[int]:
         # 2) добираємо із сусідніх відсіків — беремо найкращі за пріоритетом
         return avail[:qty]
 
-    # ── інтерсіті: беремо поспіль за пріоритетом (вікно йде першим) ──
+    # ── ІС 2 клас: живі пари «вікно + сусіднє» з карти вагона ──
+    if kind == "intercity2" and qty == 2 and adjacent_pairs:
+        rank = {seat: index for index, seat in enumerate(pr)}
+        pairs = [
+            (a, b) for a, b in adjacent_pairs
+            if a in free and b in free
+        ]
+        if pairs:
+            return list(min(pairs, key=lambda pair: min(
+                rank.get(pair[0], 10_000), rank.get(pair[1], 10_000)
+            )))
+
+    # ── інтерсіті: одиночні або fallback без живої карти ──
     return avail[:qty]

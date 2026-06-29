@@ -29,7 +29,9 @@ function toast(msg) {
   setTimeout(() => t.classList.remove("show"), 2200);
 }
 function esc(s) {
-  return String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
 }
 
 async function api(path, opts = {}) {
@@ -278,6 +280,31 @@ function trainCard(t, route) {
 
 // ── налаштування маршруту ─────────────────────
 let settingsKey = null;
+let settingsPassengers = [];
+
+function renderPassengers() {
+  const box = $("set-passengers");
+  box.innerHTML = settingsPassengers.map((p, i) => `
+    <div class="passenger-row" data-index="${i}">
+      <input data-field="name" placeholder="Ім’я" value="${esc(p.name || "")}" />
+      <input data-field="surname" placeholder="Прізвище" value="${esc(p.surname || "")}" />
+      <button type="button" aria-label="Видалити">×</button>
+    </div>`).join("");
+  box.querySelectorAll(".passenger-row").forEach(row => {
+    const i = Number(row.dataset.index);
+    row.querySelectorAll("input").forEach(input => {
+      input.oninput = () => settingsPassengers[i][input.dataset.field] = input.value;
+    });
+    row.querySelector("button").onclick = () => {
+      settingsPassengers.splice(i, 1);
+      renderPassengers();
+    };
+  });
+}
+
+function toggleAutobronFields() {
+  $("autobron-fields").hidden = !$("set-autobron").checked;
+}
 
 function renderTrainChips(trains, selected) {
   const box = $("set-trains-chips");
@@ -332,6 +359,14 @@ function openSettings(r) {
   $("set-load-trains").textContent = "📋 Завантажити список поїздів";
   $("set-qfrom").value = r.quiet_from || "";
   $("set-qto").value = r.quiet_to || "";
+  $("set-notify").value = r.notify_on || "appear_decrease";
+  $("set-autobron").checked = Boolean(r.autobron);
+  $("set-seat-kind").value = r.seat_kind || "";
+  $("set-qty").value = String(r.qty || 1);
+  settingsPassengers = Array.isArray(r.passengers) ? r.passengers.map(p => ({ ...p })) : [];
+  if (!settingsPassengers.length) settingsPassengers.push({ name: "", surname: "" });
+  renderPassengers();
+  toggleAutobronFields();
   show("view-settings");
 }
 
@@ -346,6 +381,13 @@ async function saveSettings() {
         train_filter: trains.join(","),
         quiet_from: $("set-qfrom").value || "",
         quiet_to: $("set-qto").value || "",
+        notify_on: $("set-notify").value,
+        autobron: $("set-autobron").checked,
+        seat_kind: $("set-seat-kind").value,
+        qty: Number($("set-qty").value),
+        passengers: settingsPassengers
+          .map(p => ({ name: p.name.trim(), surname: p.surname.trim() }))
+          .filter(p => p.name && p.surname),
       }),
     });
     toast("Збережено ✅");
@@ -372,6 +414,11 @@ $("to-q").onblur = () => setTimeout(restorePickedTo, 180);
 $("set-save").onclick = saveSettings;
 $("set-back").onclick = () => show("view-list");
 $("set-load-trains").onclick = loadTrains;
+$("set-autobron").onchange = toggleAutobronFields;
+$("add-passenger").onclick = () => {
+  settingsPassengers.push({ name: "", surname: "" });
+  renderPassengers();
+};
 // чіпи майстра додавання (зберігають у draft.wagons)
 document.querySelectorAll("#wagons .chip").forEach(c => {
   c.onclick = () => {

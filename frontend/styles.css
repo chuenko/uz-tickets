@@ -250,6 +250,21 @@ table.seats td { padding: 4px 0; vertical-align: baseline; }
 table.seats td.n { width: 44px; color: var(--ok); font-weight: 800; text-align: right; white-space: nowrap; }
 table.seats td.p { width: 66px; color: var(--muted); text-align: right; white-space: nowrap; }
 
+.setting-card { margin-top: 20px; padding: 4px 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow); }
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; text-transform: none; letter-spacing: 0; }
+.switch-row span { display: flex; flex-direction: column; gap: 3px; }
+.switch-row b { color: var(--text); font-size: 14px; }
+.switch-row small { color: var(--muted); font-size: 10px; font-weight: 500; }
+.switch-row input { position: absolute; opacity: 0; pointer-events: none; }
+.switch-row i { width: 46px; height: 27px; flex: none; position: relative; background: #cbd5df; border-radius: 20px; transition: .18s ease; }
+.switch-row i::after { content: ""; position: absolute; width: 21px; height: 21px; left: 3px; top: 3px; background: #fff; border-radius: 50%; box-shadow: 0 2px 5px rgba(7,26,51,.2); transition: .18s ease; }
+.switch-row input:checked + i { background: var(--blue); }
+.switch-row input:checked + i::after { transform: translateX(19px); }
+.passenger-row { display: grid; grid-template-columns: 1fr 1fr 38px; gap: 7px; margin-bottom: 8px; }
+.passenger-row input { min-width: 0; padding: 12px; font-size: 12px; }
+.passenger-row button { width: 38px; min-height: 42px; margin: 0; padding: 0; color: var(--danger); background: rgba(233,75,91,.06); border: 1px solid rgba(233,75,91,.14); }
+button.compact { min-height: 42px; padding: 10px; font-size: 12px; }
+
 .empty {
   min-height: 145px; display: grid; place-items: center; padding: 30px 18px;
   color: var(--muted); background: rgba(255,255,255,.52); border: 1px dashed #ccd7e1;

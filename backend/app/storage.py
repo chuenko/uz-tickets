@@ -46,6 +46,7 @@ def init() -> None:
         "ALTER TABLE routes ADD COLUMN quiet_from TEXT DEFAULT ''",     # тихі години HH:MM
         "ALTER TABLE routes ADD COLUMN quiet_to TEXT DEFAULT ''",
         "ALTER TABLE routes ADD COLUMN notify_on TEXT DEFAULT 'appear_decrease'",  # коли пінгувати (резерв)
+        "ALTER TABLE routes ADD COLUMN seat_pick TEXT DEFAULT '[]'",  # конкретні місця
     ):
         try:
             _conn.execute(ddl)
@@ -134,8 +135,16 @@ def set_autobron(key: str, enabled: bool, seat_kind: str = "",
 
 def set_settings(key: str, **fields) -> None:
     """Оновлює лише передані поля налаштувань маршруту."""
-    allowed = {"wagon_filter", "train_filter", "quiet_from", "quiet_to", "notify_on"}
+    allowed = {
+        "wagon_filter", "train_filter", "quiet_from", "quiet_to", "notify_on",
+        "autobron", "seat_kind", "qty", "passengers", "seat_pick",
+    }
     fields = {k: v for k, v in fields.items() if k in allowed and v is not None}
+    for key in ("passengers", "seat_pick"):
+        if key in fields:
+            fields[key] = json.dumps(fields[key], ensure_ascii=False)
+    if "autobron" in fields:
+        fields["autobron"] = 1 if fields["autobron"] else 0
     if not fields:
         return
     clause = ", ".join(f"{k} = ?" for k in fields)
@@ -171,4 +180,8 @@ def _row_to_dict(row: sqlite3.Row) -> dict:
         d["passengers"] = json.loads(d.get("passengers") or "[]")
     except (json.JSONDecodeError, TypeError):
         d["passengers"] = []
+    try:
+        d["seat_pick"] = json.loads(d.get("seat_pick") or "[]")
+    except (json.JSONDecodeError, TypeError):
+        d["seat_pick"] = []
     return d

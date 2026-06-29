@@ -47,6 +47,15 @@ def buy_link(route: dict) -> str:
     )
 
 
+def notification_action(mode: str, appeared: bool, live_id: int) -> str:
+    """send — нове повідомлення, edit — тиха правка, none — лише зберегти стан."""
+    if mode == "any":
+        return "send"
+    if mode == "appear":
+        return "send" if appeared else "none"
+    return "send" if appeared else ("edit" if live_id else "none")
+
+
 def fmt_status(trains: list[dict], route: dict) -> str:
     link = buy_link(route)
     # лише поїзди, де є вільні місця
@@ -152,15 +161,19 @@ class UZMonitor:
         text = fmt_status(trains, route)          # поточна наявність (одне живе повідомлення)
         live_id = route.get("live_msg_id") or 0
         chat = route["chat_id"]
-        log.info("Зміни [%s]: appeared=%s avail=%s", route["key"], appeared, avail)
+        mode = route.get("notify_on") or "appear_decrease"
+        action = notification_action(mode, appeared, live_id)
+        log.info("Зміни [%s]: appeared=%s avail=%s mode=%s action=%s",
+                 route["key"], appeared, avail, mode, action)
 
-        if appeared:
+        if action == "send":
             # нова поява місць → окреме повідомлення (вночі — без звуку)
-            msg = await self.bot.send_message(chat, text, parse_mode="HTML",
+            message = fmt_alert(changes, trains, route) if mode == "any" else text
+            msg = await self.bot.send_message(chat, message, parse_mode="HTML",
                                               disable_web_page_preview=True,
                                               disable_notification=in_quiet_hours(route))
             storage.set_live_msg(route["key"], msg.message_id)
-        elif live_id:
+        elif action == "edit":
             # лише коливання (більше/менше) → мовчки редагуємо те саме повідомлення
             try:
                 await self.bot.edit_message_text(text, chat_id=chat, message_id=live_id,

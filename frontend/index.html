@@ -110,10 +110,40 @@
         <input id="set-qto" type="time" />
       </div>
 
-      <label>Коли пінгувати <span class="hint">(скоро)</span></label>
-      <select id="set-notify" disabled>
-        <option>З'явилися місця + зміни</option>
+      <label>Коли повідомляти</label>
+      <select id="set-notify">
+        <option value="appear">Тільки коли з’явилися місця</option>
+        <option value="appear_decrease">Поява + тихі оновлення</option>
+        <option value="any">При кожній зміні</option>
       </select>
+
+      <div class="setting-card">
+        <label class="switch-row">
+          <span><b>Автобронь</b><small>Дійти до оплати автоматично</small></span>
+          <input id="set-autobron" type="checkbox" />
+          <i></i>
+        </label>
+        <div id="autobron-fields" hidden>
+          <label>Тип місця</label>
+          <select id="set-seat-kind">
+            <option value="">Оберіть тип</option>
+            <option value="kupe">Купе</option>
+            <option value="plats">Плацкарт</option>
+            <option value="intercity1">Інтерсіті — 1 клас</option>
+            <option value="intercity2">Інтерсіті — 2 клас</option>
+          </select>
+          <label>Кількість місць</label>
+          <select id="set-qty">
+            <option value="1">1 пасажир</option>
+            <option value="2">2 пасажири</option>
+            <option value="3">3 пасажири</option>
+            <option value="4">4 пасажири</option>
+          </select>
+          <label>Пасажири</label>
+          <div id="set-passengers"></div>
+          <button class="ghost bordered compact" id="add-passenger" type="button">＋ Додати пасажира</button>
+        </div>
+      </div>
 
       <button class="primary" id="set-save">Зберегти зміни <span class="button-arrow">→</span></button>
     </section>
