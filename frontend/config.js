@@ -1,3 +1,2 @@
-// URL бекенду на Railway. Заміни на свій публічний домен Railway.
-// Напр.: https://uz-tickets-production.up.railway.app
-window.API_BASE = "https://uz-tickets-production.up.railway.app";
+// URL бекенду (VPS через Caddy + sslip.io, авто-HTTPS).
+window.API_BASE = "https://94.141.160.129.sslip.io";
