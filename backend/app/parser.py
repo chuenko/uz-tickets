@@ -80,6 +80,7 @@ def parse_trains(data: Any) -> list[dict]:
             seats[code] = {"title": title, "seats": count, "price": price}
 
         trains.append({
+            "id": str(train_obj.get("id") or train_obj.get("trip_id") or raw.get("id") or raw.get("trip_id") or ""),
             "number": number,
             "departure": departure,
             "arrival": arrival,

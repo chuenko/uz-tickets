@@ -28,6 +28,11 @@ class AddRoute(StatesGroup):
     date = State()
 
 
+class UzLogin(StatesGroup):
+    phone = State()
+    code = State()
+
+
 # ── Клавіатури ────────────────────────────────
 def kb_main(has_routes: bool) -> InlineKeyboardMarkup:
     rows = [[InlineKeyboardButton(text="➕ Додати маршрут", callback_data="add_route")]]
@@ -81,6 +86,34 @@ def kb_route_actions(key: str, active: bool) -> InlineKeyboardMarkup:
 
 # ── Хендлери ──────────────────────────────────
 def setup_handlers(dp: Dispatcher, monitor):
+    @dp.message(Command("uzlogin"))
+    async def cmd_uzlogin(msg: Message, state: FSMContext):
+        await state.set_state(UzLogin.phone)
+        await msg.answer(
+            "🔐 Надішліть номер телефону УЗ у форматі <code>+380XXXXXXXXX</code>.\n"
+            "Я використаю його лише у формі входу Укрзалізниці.",
+            parse_mode="HTML",
+        )
+
+    @dp.message(UzLogin.phone)
+    async def uzlogin_phone(msg: Message, state: FSMContext):
+        try:
+            await msg.answer("⏳ Надсилаю запит на SMS…")
+            await monitor.fetcher.begin_login(msg.chat.id, msg.text or "")
+            await state.set_state(UzLogin.code)
+            await msg.answer("📩 SMS від УЗ надіслано. Введіть код із повідомлення.")
+        except Exception as e:
+            await msg.answer(f"⚠️ Не вдалося почати вхід: {e}")
+
+    @dp.message(UzLogin.code)
+    async def uzlogin_code(msg: Message, state: FSMContext):
+        ok = await monitor.fetcher.finish_login(msg.chat.id, msg.text or "")
+        if ok:
+            await state.clear()
+            await msg.answer("✅ Вхід в УЗ виконано. Сесію збережено.")
+        else:
+            await msg.answer("⚠️ Код не прийнято. Перевірте його або почніть знову: /uzlogin")
+
 
     @dp.message(Command("start"))
     async def cmd_start(msg: Message, state: FSMContext):

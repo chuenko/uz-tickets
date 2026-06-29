@@ -56,6 +56,61 @@ def notification_action(mode: str, appeared: bool, live_id: int) -> str:
     return "send" if appeared else ("edit" if live_id else "none")
 
 
+def normalize_seat_map(raw) -> list[dict]:
+    """Зводить різні форми відповіді УЗ до [{number, seats:[{number,free}]}]."""
+    wagons = []
+    seen = set()
+
+    def seat_items(value):
+        out = []
+        items = value.values() if isinstance(value, dict) else value if isinstance(value, list) else []
+        for item in items:
+            if isinstance(item, int) or (isinstance(item, str) and item.isdigit()):
+                out.append({"number": int(item), "free": True})
+                continue
+            if not isinstance(item, dict):
+                continue
+            number = item.get("number") or item.get("place") or item.get("seat") or item.get("id")
+            try:
+                number = int(number)
+            except (TypeError, ValueError):
+                continue
+            status = str(item.get("status") or "").lower()
+            free = item.get("is_free", item.get("free", item.get("available", True)))
+            if status in ("occupied", "busy", "sold", "reserved"):
+                free = False
+            out.append({"number": number, "free": bool(free)})
+        return out
+
+    def walk(value):
+        if isinstance(value, dict):
+            places = next((value.get(k) for k in (
+                "places", "seats", "free_seats", "available_seats"
+            ) if value.get(k) is not None), None)
+            number = (
+                value.get("wagon_number") or value.get("car_number")
+                or value.get("wagon_num") or value.get("number")
+            )
+            seats = seat_items(places)
+            if number is not None and seats:
+                key = str(number)
+                if key not in seen:
+                    seen.add(key)
+                    wagons.append({
+                        "number": key,
+                        "seats": sorted(seats, key=lambda seat: seat["number"]),
+                    })
+                return
+            for nested in value.values():
+                walk(nested)
+        elif isinstance(value, list):
+            for nested in value:
+                walk(nested)
+
+    walk(raw)
+    return wagons
+
+
 def fmt_status(trains: list[dict], route: dict) -> str:
     link = buy_link(route)
     # лише поїзди, де є вільні місця
@@ -206,9 +261,27 @@ class UZMonitor:
             return {"ok": False, "trains": []}
         trains = parse_trains(raw)
         return {"ok": True, "trains": [
-            {"number": t["number"], "departure": t["departure"], "arrival": t["arrival"]}
+            {
+                "id": t["id"], "number": t["number"],
+                "departure": t["departure"], "arrival": t["arrival"],
+                "classes": [
+                    {"code": code, "title": info["title"]}
+                    for code, info in t["seats"].items() if code.upper() != "Л"
+                ],
+            }
             for t in trains
         ]}
+
+    async def fetch_seat_map_json(self, route: dict, trip_id: str, class_code: str) -> dict:
+        if class_code.upper() == "Л":
+            return {"ok": False, "wagons": [], "detail": "Люкс/СВ заборонено"}
+        raw = await self.fetcher.fetch_seat_map(
+            route["from_id"], route["to_id"], route["date"], trip_id, class_code,
+        )
+        if raw is None:
+            return {"ok": False, "wagons": []}
+        wagons = normalize_seat_map(raw)
+        return {"ok": bool(wagons), "wagons": wagons}
 
     async def close(self):
         await self.fetcher.close()

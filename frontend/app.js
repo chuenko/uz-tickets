@@ -281,6 +281,8 @@ function trainCard(t, route) {
 // ── налаштування маршруту ─────────────────────
 let settingsKey = null;
 let settingsPassengers = [];
+let settingsTrains = [];
+let selectedSeats = [];
 
 function renderPassengers() {
   const box = $("set-passengers");
@@ -304,6 +306,51 @@ function renderPassengers() {
 
 function toggleAutobronFields() {
   $("autobron-fields").hidden = !$("set-autobron").checked;
+}
+
+function fillSeatClasses() {
+  const train = settingsTrains.find(t => String(t.id) === $("seat-trip").value);
+  $("seat-class").innerHTML = '<option value="">Клас</option>' +
+    (train?.classes || []).map(c => `<option value="${esc(c.code)}">${esc(c.title)}</option>`).join("");
+}
+
+function renderSeatMaps(wagons) {
+  $("seat-maps").innerHTML = wagons.map(w => `
+    <div class="wagon-map">
+      <b>Вагон ${esc(w.number)}</b>
+      <div class="seat-grid">${w.seats.map(s => {
+        const key = `${w.number}:${s.number}`;
+        const on = selectedSeats.some(x => `${x.wagon}:${x.seat}` === key);
+        return `<button type="button" class="seat ${s.free ? "" : "busy"} ${on ? "on" : ""}"
+          data-wagon="${esc(w.number)}" data-seat="${s.number}" ${s.free ? "" : "disabled"}>${s.number}</button>`;
+      }).join("")}</div>
+    </div>`).join("");
+  document.querySelectorAll("#seat-maps .seat:not(.busy)").forEach(button => {
+    button.onclick = () => {
+      const item = {
+        trip_id: $("seat-trip").value, class_code: $("seat-class").value,
+        wagon: button.dataset.wagon, seat: Number(button.dataset.seat),
+      };
+      const index = selectedSeats.findIndex(x =>
+        String(x.wagon) === item.wagon && Number(x.seat) === item.seat);
+      if (index >= 0) selectedSeats.splice(index, 1); else selectedSeats.push(item);
+      button.classList.toggle("on", index < 0);
+    };
+  });
+}
+
+async function loadSeatMap() {
+  const tripId = $("seat-trip").value;
+  const classCode = $("seat-class").value;
+  if (!tripId || !classCode) { toast("Оберіть поїзд і клас"); return; }
+  $("seat-maps").innerHTML = '<div class="empty">Завантаження карти ~15с…</div>';
+  try {
+    const result = await api(`/api/routes/${settingsKey}/seat-map?trip_id=${encodeURIComponent(tripId)}&class_code=${encodeURIComponent(classCode)}`);
+    if (!result.ok) throw new Error("Карта недоступна");
+    renderSeatMaps(result.wagons);
+  } catch (e) {
+    $("seat-maps").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+  }
 }
 
 function renderTrainChips(trains, selected) {
@@ -337,7 +384,11 @@ async function loadTrains() {
   btn.textContent = "⏳ Завантаження ~15с…"; btn.disabled = true;
   try {
     const { trains } = await api(`/api/routes/${settingsKey}/trains`);
+    settingsTrains = trains;
     renderTrainChips(trains, sel);
+    $("seat-trip").innerHTML = '<option value="">Оберіть поїзд</option>' +
+      trains.filter(t => t.id).map(t => `<option value="${esc(t.id)}">№${esc(t.number)} · ${esc(t.departure)}</option>`).join("");
+    fillSeatClasses();
     btn.textContent = "🔄 Оновити список";
   } catch (e) {
     toast("Помилка: " + e.message);
@@ -364,6 +415,10 @@ function openSettings(r) {
   $("set-seat-kind").value = r.seat_kind || "";
   $("set-qty").value = String(r.qty || 1);
   settingsPassengers = Array.isArray(r.passengers) ? r.passengers.map(p => ({ ...p })) : [];
+  selectedSeats = Array.isArray(r.seat_pick) ? r.seat_pick.map(s => ({ ...s })) : [];
+  settingsTrains = [];
+  $("seat-maps").innerHTML = selectedSeats.length
+    ? `<div class="picked-seats">Обрані місця: ${selectedSeats.map(s => `${esc(s.wagon)}/${s.seat}`).join(", ")}</div>` : "";
   if (!settingsPassengers.length) settingsPassengers.push({ name: "", surname: "" });
   renderPassengers();
   toggleAutobronFields();
@@ -388,6 +443,7 @@ async function saveSettings() {
         passengers: settingsPassengers
           .map(p => ({ name: p.name.trim(), surname: p.surname.trim() }))
           .filter(p => p.name && p.surname),
+        seat_pick: selectedSeats,
       }),
     });
     toast("Збережено ✅");
@@ -414,6 +470,8 @@ $("to-q").onblur = () => setTimeout(restorePickedTo, 180);
 $("set-save").onclick = saveSettings;
 $("set-back").onclick = () => show("view-list");
 $("set-load-trains").onclick = loadTrains;
+$("seat-trip").onchange = fillSeatClasses;
+$("load-seat-map").onclick = loadSeatMap;
 $("set-autobron").onchange = toggleAutobronFields;
 $("add-passenger").onclick = () => {
   settingsPassengers.push({ name: "", surname: "" });

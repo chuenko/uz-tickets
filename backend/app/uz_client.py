@@ -7,7 +7,7 @@ UZ закритий Cloudflare/reCAPTCHA, тому список рейсів д�
 import asyncio
 import logging
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 
 import aiohttp
 from playwright.async_api import async_playwright, BrowserContext
@@ -104,6 +104,7 @@ class UZFetcher:
         self._pw = None
         self.context: Optional[BrowserContext] = None
         self._start_lock = asyncio.Lock()
+        self._login_pages: dict[int, object] = {}
 
     async def start(self):
         async with self._start_lock:
@@ -164,6 +165,100 @@ class UZFetcher:
             await page.close()
         return result
 
+    async def fetch_seat_map(
+        self, from_id: str, to_id: str, date: str, trip_id: str, class_code: str
+    ) -> Optional[dict]:
+        """Перехоплює авторизаційні заголовки trips і ними запитує живу карту вагонів."""
+        if self.context is None:
+            await self.start()
+        page = await self.context.new_page()
+        api_headers: dict | None = None
+        got = asyncio.Event()
+
+        async def on_response(response):
+            nonlocal api_headers
+            if (
+                "/api/v3/trips?" in response.url
+                and "station_from_id" in response.url
+                and f"date={date}" in response.url
+            ):
+                api_headers = await response.request.all_headers()
+                got.set()
+
+        page.on("response", on_response)
+        search_url = f"{config.BASE_URL}/search-trips/{from_id}/{to_id}/list?startDate={date}"
+        try:
+            await page.goto(search_url, wait_until="domcontentloaded", timeout=45_000)
+            await asyncio.wait_for(got.wait(), timeout=40)
+            endpoint = (
+                f"{config.API_BASE}/api/v3/trips/{quote(str(trip_id), safe='')}/"
+                f"wagons-by-class/{quote(class_code, safe='')}"
+            )
+            response = await page.request.get(endpoint, headers=api_headers or {}, timeout=25_000)
+            if response.status == 200:
+                return await response.json()
+            log.warning("Карта вагонів API %s [trip=%s class=%s]",
+                        response.status, trip_id, class_code)
+        except Exception as e:
+            log.error("Карта вагонів: %s", e)
+        finally:
+            await page.close()
+        return None
+
+    async def begin_login(self, chat_id: int, phone: str) -> bool:
+        """Надсилає SMS через офіційну форму УЗ; сторінку тримає до введення коду."""
+        if self.context is None:
+            await self.start()
+        old = self._login_pages.pop(chat_id, None)
+        if old:
+            await old.close()
+        page = await self.context.new_page()
+        try:
+            await page.goto(config.BASE_URL, wait_until="domcontentloaded", timeout=45_000)
+            login = page.get_by_role("button", name="Увійти", exact=True)
+            if await login.count() < 1:
+                raise RuntimeError("Кнопку входу не знайдено")
+            await login.first.click(force=True)
+            field = page.get_by_role("textbox", name="Номер телефону", exact=True)
+            await field.wait_for(state="visible", timeout=10_000)
+            digits = "".join(ch for ch in phone if ch.isdigit())
+            if digits.startswith("380"):
+                digits = digits[3:]
+            if len(digits) != 9:
+                raise ValueError("Номер має містити 9 цифр після +380")
+            await field.fill(digits)
+            confirm = page.get_by_role("button", name="Підтвердити", exact=True)
+            await confirm.click()
+            self._login_pages[chat_id] = page
+            return True
+        except Exception:
+            await page.close()
+            raise
+
+    async def finish_login(self, chat_id: int, code: str) -> bool:
+        """Вводить SMS-код. Авторизована сесія лишається в persistent profile."""
+        page = self._login_pages.get(chat_id)
+        if not page:
+            return False
+        try:
+            otp = page.locator('input[autocomplete="one-time-code"]')
+            if await otp.count() != 1:
+                fields = page.get_by_role("textbox")
+                count = await fields.count()
+                otp = fields.nth(count - 1)
+            await otp.wait_for(state="visible", timeout=15_000)
+            await otp.fill("".join(ch for ch in code if ch.isdigit()))
+            confirm = page.get_by_role("button", name="Підтвердити", exact=True)
+            await confirm.click()
+            await page.wait_for_timeout(2_000)
+            success = await page.get_by_role("textbox", name="Номер телефону", exact=True).count() == 0
+            if success:
+                self._login_pages.pop(chat_id, None)
+                await page.close()
+            return success
+        except Exception:
+            return False
+
     async def _diagnose(self, page) -> None:
         """На таймауті — з'ясувати, чи це Cloudflare-челендж."""
         try:
@@ -178,6 +273,9 @@ class UZFetcher:
             log.warning("Diag не вдалось: %s", e)
 
     async def close(self):
+        for page in list(self._login_pages.values()):
+            await page.close()
+        self._login_pages.clear()
         if self.context:
             await self.context.close()
         if self._pw:
