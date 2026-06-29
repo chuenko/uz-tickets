@@ -58,11 +58,11 @@ const draft = { from: null, to: null, wagons: new Set() };
 // ── список маршрутів ──────────────────────────
 async function loadRoutes() {
   const box = $("routes");
-  box.innerHTML = '<div class="empty">Завантаження…</div>';
+  box.innerHTML = '<div class="empty">Завантажуємо ваші маршрути…</div>';
   try {
     const { routes } = await api("/api/routes");
     if (!routes.length) {
-      box.innerHTML = '<div class="empty">Поки немає маршрутів.<br>Додай перший 👆</div>';
+      box.innerHTML = '<div class="empty">Тут з’являться ваші маршрути.<br>Додайте перший — і ми почнемо шукати квитки.</div>';
       return;
     }
     box.innerHTML = "";
@@ -81,17 +81,17 @@ function routeCard(r) {
   const sub = esc(r.date) + (r.active ? "" : " · ⏸ пауза") + (extra.length ? " · " + extra.join(" · ") : "");
   el.innerHTML = `
     <div class="row">
-      <div class="ico${r.active ? "" : " paused"}">📍</div>
+      <div class="ico${r.active ? "" : " paused"}"></div>
       <div>
         <div class="title">${esc(r.from_name)} → ${esc(r.to_name)}</div>
         <div class="meta">${sub}</div>
       </div>
     </div>
     <div class="actions">
-      <button data-act="status" class="grow">🔍 Статус</button>
-      <button data-act="settings">⚙️</button>
-      <button data-act="toggle">${r.active ? "⏸" : "▶️"}</button>
-      <button data-act="delete" class="danger">🗑</button>
+      <button data-act="status" class="grow">Перевірити місця</button>
+      <button data-act="settings" title="Налаштування">⚙</button>
+      <button data-act="toggle" title="${r.active ? "Призупинити" : "Відновити"}">${r.active ? "Ⅱ" : "▶"}</button>
+      <button data-act="delete" class="danger" title="Видалити">×</button>
     </div>`;
   el.querySelector('[data-act="status"]').onclick = () => openStatus(r);
   el.querySelector('[data-act="settings"]').onclick = () => openSettings(r);
@@ -187,7 +187,7 @@ async function saveRoute() {
 async function openStatus(r) {
   show("view-status");
   $("status-head").innerHTML =
-    `<div class="route"><div class="row"><div class="ico">📍</div><div>
+    `<div class="route"><div class="row"><div class="ico"></div><div>
        <div class="title">${esc(r.from_name)} → ${esc(r.to_name)}</div>
        <div class="meta">${esc(r.date)}</div></div></div></div>`;
   $("status-body").innerHTML = '<div class="empty">Завантаження ~10с…</div>';
@@ -260,7 +260,7 @@ async function loadTrains() {
 function openSettings(r) {
   settingsKey = r.key;
   $("set-head").innerHTML =
-    `<div class="route"><div class="row"><div class="ico">📍</div><div>
+    `<div class="route"><div class="row"><div class="ico"></div><div>
        <div class="title">${esc(r.from_name)} → ${esc(r.to_name)}</div>
        <div class="meta">${esc(r.date)}</div></div></div></div>`;
   const wf = (r.wagon_filter || "").split(",").map(s => s.trim().toUpperCase()).filter(Boolean);

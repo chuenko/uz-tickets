@@ -3,26 +3,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>UZ Tickets</title>
+  <title>Вільні місця · УЗ</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="styles.css" />
   <script src="config.js"></script>
 </head>
 <body>
   <header class="header">
-    <div class="nav-bar"><div class="abstract-graphic">🚆</div></div>
-    <h1 class="header-title">Укрзалізниця квитки</h1>
-    <div class="header-sub">Моніторинг квитків УЗ</div>
-    <svg class="header-wave" viewBox="0 0 1440 22" preserveAspectRatio="none">
-      <path d="M0,22 L1440,22 L1440,7 C1080,24 360,24 0,7 Z"></path>
-    </svg>
+    <div class="header-glow"></div>
+    <div class="nav-bar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><path d="M8 22h16M10 26h12M9 18V9.5A3.5 3.5 0 0 1 12.5 6h7A3.5 3.5 0 0 1 23 9.5V18M9 18h14M12 12h8M12 22l-3 4M20 22l3 4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <div class="brand-name">ВІЛЬНІ МІСЦЯ</div>
+          <div class="brand-caption">розумний моніторинг УЗ</div>
+        </div>
+      </div>
+      <span class="live-badge"><i></i> Працює</span>
+    </div>
+    <div class="hero">
+      <div class="hero-kicker">Квитки без зайвого очікування</div>
+      <h1 class="header-title">Ми знайдемо місце.<br><span>Ви просто їдете.</span></h1>
+      <p class="header-sub">Стежимо за потрібним рейсом цілодобово та одразу повідомляємо про вільні квитки.</p>
+    </div>
+    <div class="rail-line" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   </header>
 
   <main id="app">
     <!-- Список маршрутів -->
     <section id="view-list">
-      <button class="primary" id="btn-add">➕ Додати маршрут</button>
-      <h2 class="section-title">Мої маршрути</h2>
+      <button class="primary add-route" id="btn-add"><span class="button-icon">＋</span><span>Додати маршрут</span><span class="button-arrow">→</span></button>
+      <div class="section-heading">
+        <div>
+          <div class="section-kicker">Ваші подорожі</div>
+          <h2 class="section-title">Мої маршрути</h2>
+        </div>
+        <span class="section-status">● онлайн</span>
+      </div>
       <div id="routes"></div>
     </section>
 
@@ -53,7 +72,7 @@
           <span class="chip" data-code="С">Сидячий</span>
           <span class="chip" data-code="О">Загальний</span>
         </div>
-        <button class="primary" id="btn-save">✅ Зберегти маршрут</button>
+        <button class="primary" id="btn-save">Зберегти маршрут <span class="button-arrow">→</span></button>
       </div>
 
       <button class="ghost" id="btn-cancel">Скасувати</button>
@@ -63,7 +82,7 @@
     <section id="view-status" hidden>
       <div id="status-head"></div>
       <div id="status-body"></div>
-      <button class="ghost" id="btn-back">🔙 Назад</button>
+      <button class="ghost" id="btn-back">← Назад</button>
     </section>
 
     <!-- Налаштування маршруту -->
@@ -83,7 +102,7 @@
 
       <label>Конкретні поїзди <span class="hint">(порожньо = всі)</span></label>
       <div class="chips" id="set-trains-chips"></div>
-      <button class="ghost" id="set-load-trains">📋 Завантажити список поїздів</button>
+      <button class="ghost bordered" id="set-load-trains">Завантажити список поїздів</button>
 
       <label>Тихі години <span class="hint">(вночі без звуку)</span></label>
       <div class="row2">
@@ -96,8 +115,8 @@
         <option>З'явилися місця + зміни</option>
       </select>
 
-      <button class="primary" id="set-save">💾 Зберегти</button>
-      <button class="ghost" id="set-back">🔙 Назад</button>
+      <button class="primary" id="set-save">Зберегти зміни <span class="button-arrow">→</span></button>
+      <button class="ghost" id="set-back">← Назад</button>
     </section>
   </main>
 
