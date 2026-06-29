@@ -58,6 +58,8 @@ function debounce(fn, ms) {
 const draft = { from: null, to: null, wagons: new Set() };
 let editingFrom = false;
 let editingTo = false;
+let statusTrains = [];
+let statusRoute = null;
 
 // ── список маршрутів ──────────────────────────
 async function loadRoutes() {
@@ -254,13 +256,18 @@ async function openStatus(r) {
     const { ok, trains } = await api(`/api/routes/${r.key}/status`);
     if (!ok) { $("status-body").innerHTML = '<div class="empty">⚠️ Не вдалося отримати дані</div>'; return; }
     if (!trains.length) { $("status-body").innerHTML = '<div class="empty">Поїздів не знайдено</div>'; return; }
+    statusTrains = trains;
+    statusRoute = r;
     $("status-body").innerHTML = trains.map(trainCard).join("");
+    document.querySelectorAll(".train-route").forEach(btn => {
+      btn.onclick = () => openRouteSheet(statusTrains[Number(btn.dataset.train)]);
+    });
   } catch (e) {
     $("status-body").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
   }
 }
 
-function trainCard(t) {
+function trainCard(t, index) {
   const rows = Object.entries(t.seats)
     .filter(([, s]) => s.seats > 0)
     .map(([code, s]) =>
@@ -268,9 +275,44 @@ function trainCard(t) {
     .join("");
   if (!rows) return "";
   return `<div class="train">
-      <div class="thead"><span class="tnum">№${esc(t.number)}</span><span class="ttime">${esc(t.departure)} → ${esc(t.arrival)}</span></div>
+      <div class="thead">
+        <span class="tnum">№${esc(t.number)}</span>
+        <span class="ttime">${esc(t.departure)} → ${esc(t.arrival)}</span>
+        <button class="train-route" data-train="${index}">Маршрут</button>
+      </div>
       <table class="seats">${rows}</table>
     </div>`;
+}
+
+function routeStopTime(stop) {
+  const arrival = stop.arrival || "";
+  const departure = stop.departure || "";
+  if (arrival && departure && arrival !== departure) return `${esc(arrival)}<br>${esc(departure)}`;
+  return esc(arrival || departure || "—");
+}
+
+function openRouteSheet(train) {
+  const stops = train.stops?.length ? train.stops : [
+    { name: statusRoute?.from_name || "Станція відправлення", departure: train.departure, note: "початкова" },
+    { name: statusRoute?.to_name || "Станція призначення", arrival: train.arrival, note: "кінцева" },
+  ];
+  $("sheet-title").textContent = `Маршрут №${train.number}`;
+  $("sheet-route").innerHTML = `<div class="route-timeline">${stops.map((stop, i) => `
+    <div class="route-stop">
+      <div class="route-stop-time">${routeStopTime(stop)}</div>
+      <div class="route-stop-track"><i class="route-dot"></i></div>
+      <div class="route-stop-info">
+        <div class="route-stop-name">${esc(stop.name || "Станція")}</div>
+        ${stop.note ? `<div class="route-stop-note">${esc(stop.note)}</div>` : ""}
+      </div>
+    </div>`).join("")}</div>`;
+  $("route-sheet").hidden = false;
+  document.body.classList.add("sheet-open");
+}
+
+function closeRouteSheet() {
+  $("route-sheet").hidden = true;
+  document.body.classList.remove("sheet-open");
 }
 
 // ── налаштування маршруту ─────────────────────
@@ -369,6 +411,8 @@ $("to-q").onblur = () => setTimeout(restorePickedTo, 180);
 $("set-save").onclick = saveSettings;
 $("set-back").onclick = () => show("view-list");
 $("set-load-trains").onclick = loadTrains;
+$("sheet-close").onclick = closeRouteSheet;
+$("route-sheet").onclick = e => { if (e.target === $("route-sheet")) closeRouteSheet(); };
 // чіпи майстра додавання (зберігають у draft.wagons)
 document.querySelectorAll("#wagons .chip").forEach(c => {
   c.onclick = () => {

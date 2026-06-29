@@ -54,6 +54,51 @@ def _wagon_list(train_obj: dict, raw: dict) -> list:
     return []
 
 
+def _fmt_stop_time(value) -> str:
+    formatted = _fmt_ts(value)
+    if formatted == "—":
+        return ""
+    return formatted.split(" ")[-1] if " " in formatted else formatted
+
+
+def _route_stops(train_obj: dict, raw: dict) -> list[dict]:
+    """Нормалізує зупинки, якщо UZ включив їх у відповідь рейсу."""
+    candidates = []
+    for source in (train_obj, raw):
+        for key in ("stops", "stations", "route_stations", "route", "itinerary"):
+            value = source.get(key)
+            if isinstance(value, list):
+                candidates = value
+                break
+            if isinstance(value, dict):
+                nested = value.get("stops") or value.get("stations") or value.get("items")
+                if isinstance(nested, list):
+                    candidates = nested
+                    break
+        if candidates:
+            break
+
+    stops = []
+    for item in candidates:
+        if not isinstance(item, dict):
+            continue
+        station = item.get("station") if isinstance(item.get("station"), dict) else item
+        name = (
+            station.get("name") or station.get("title") or station.get("station_name")
+            or item.get("name") or item.get("title") or item.get("station_name")
+        )
+        if not name:
+            continue
+        arrival = _fmt_stop_time(_pick_time(item, "arrive_at", "arrival", "arrival_time"))
+        departure = _fmt_stop_time(_pick_time(item, "depart_at", "departure", "departure_time"))
+        stop = {"name": str(name), "arrival": arrival, "departure": departure}
+        duration = item.get("stop_minutes") or item.get("duration") or item.get("stop")
+        if duration not in (None, "", 0, "0"):
+            stop["note"] = f"зупинка {duration} хв"
+        stops.append(stop)
+    return stops
+
+
 def parse_trains(data: Any) -> list[dict]:
     trains = []
     for raw in _items(data):
@@ -83,6 +128,7 @@ def parse_trains(data: Any) -> list[dict]:
             "number": number,
             "departure": departure,
             "arrival": arrival,
+            "stops": _route_stops(train_obj, raw),
             "seats": seats,
             "total_free": sum(s["seats"] for s in seats.values()),
         })
