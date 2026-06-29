@@ -18,7 +18,7 @@ if (tg) {
 // ── helpers ───────────────────────────────────
 function $(id) { return document.getElementById(id); }
 function show(view) {
-  ["view-list", "view-add", "view-status"].forEach(v => $(v).hidden = v !== view);
+  ["view-list", "view-add", "view-status", "view-settings"].forEach(v => $(v).hidden = v !== view);
 }
 function toast(msg) {
   const t = $("toast");
@@ -81,10 +81,12 @@ function routeCard(r) {
     <div class="meta">📅 ${esc(r.date)}${r.wagon_filter ? " · вагони: " + esc(r.wagon_filter) : ""}</div>
     <div class="actions">
       <button data-act="status">🔍 Статус</button>
-      <button data-act="toggle">${r.active ? "⏸ Пауза" : "▶️ Увімкн."}</button>
+      <button data-act="settings">⚙️</button>
+      <button data-act="toggle">${r.active ? "⏸" : "▶️"}</button>
       <button data-act="delete" class="danger">🗑</button>
     </div>`;
   el.querySelector('[data-act="status"]').onclick = () => openStatus(r);
+  el.querySelector('[data-act="settings"]').onclick = () => openSettings(r);
   el.querySelector('[data-act="toggle"]').onclick = async () => {
     await api(`/api/routes/${r.key}/active?active=${!r.active}`, { method: "POST" });
     loadRoutes();
@@ -203,6 +205,43 @@ function trainCard(t) {
     </div>`;
 }
 
+// ── налаштування маршруту ─────────────────────
+let settingsKey = null;
+
+function openSettings(r) {
+  settingsKey = r.key;
+  $("set-head").innerHTML =
+    `<div class="route"><div class="title">${esc(r.from_name)} → ${esc(r.to_name)}</div>
+     <div class="meta">📅 ${esc(r.date)}</div></div>`;
+  const wf = (r.wagon_filter || "").split(",").map(s => s.trim().toUpperCase()).filter(Boolean);
+  document.querySelectorAll("#set-wagons .chip").forEach(c =>
+    c.classList.toggle("on", wf.includes(c.dataset.code.toUpperCase())));
+  $("set-trains").value = r.train_filter || "";
+  $("set-qfrom").value = r.quiet_from || "";
+  $("set-qto").value = r.quiet_to || "";
+  show("view-settings");
+}
+
+async function saveSettings() {
+  const wagons = [...document.querySelectorAll("#set-wagons .chip.on")].map(c => c.dataset.code);
+  try {
+    await api(`/api/routes/${settingsKey}/settings`, {
+      method: "POST",
+      body: JSON.stringify({
+        wagon_filter: wagons.join(","),
+        train_filter: $("set-trains").value.trim(),
+        quiet_from: $("set-qfrom").value || "",
+        quiet_to: $("set-qto").value || "",
+      }),
+    });
+    toast("Збережено ✅");
+    show("view-list");
+    loadRoutes();
+  } catch (e) {
+    toast("Помилка: " + e.message);
+  }
+}
+
 // ── події ─────────────────────────────────────
 $("btn-add").onclick = startAdd;
 $("btn-cancel").onclick = () => show("view-list");
@@ -210,12 +249,19 @@ $("btn-back").onclick = () => show("view-list");
 $("btn-save").onclick = saveRoute;
 $("from-q").oninput = searchFrom;
 $("to-q").oninput = searchTo;
-document.querySelectorAll(".chip").forEach(c => {
+$("set-save").onclick = saveSettings;
+$("set-back").onclick = () => show("view-list");
+// чіпи майстра додавання (зберігають у draft.wagons)
+document.querySelectorAll("#wagons .chip").forEach(c => {
   c.onclick = () => {
     c.classList.toggle("on");
     const code = c.dataset.code;
     if (draft.wagons.has(code)) draft.wagons.delete(code); else draft.wagons.add(code);
   };
+});
+// чіпи екрану налаштувань (просто toggle, читаємо при збереженні)
+document.querySelectorAll("#set-wagons .chip").forEach(c => {
+  c.onclick = () => c.classList.toggle("on");
 });
 
 // ── старт ─────────────────────────────────────

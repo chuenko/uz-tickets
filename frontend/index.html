@@ -60,6 +60,39 @@
       <div id="status-body"></div>
       <button class="ghost" id="btn-back">🔙 Назад</button>
     </section>
+
+    <!-- Налаштування маршруту -->
+    <section id="view-settings" hidden>
+      <div id="set-head"></div>
+
+      <label>Тип вагона <span class="hint">(порожньо = всі)</span></label>
+      <div class="chips" id="set-wagons">
+        <span class="chip" data-code="П">Плацкарт</span>
+        <span class="chip" data-code="К">Купе</span>
+        <span class="chip" data-code="Л">Люкс</span>
+        <span class="chip" data-code="С1">1 клас</span>
+        <span class="chip" data-code="С2">2 клас</span>
+        <span class="chip" data-code="С">Сидячий</span>
+        <span class="chip" data-code="О">Загальний</span>
+      </div>
+
+      <label>Конкретні поїзди <span class="hint">(через кому, порожньо = всі)</span></label>
+      <input id="set-trains" placeholder="напр. 043П, 731К" autocomplete="off" />
+
+      <label>Тихі години <span class="hint">(вночі без звуку)</span></label>
+      <div class="row2">
+        <input id="set-qfrom" type="time" />
+        <input id="set-qto" type="time" />
+      </div>
+
+      <label>Коли пінгувати <span class="hint">(скоро)</span></label>
+      <select id="set-notify" disabled>
+        <option>З'явилися місця + зміни</option>
+      </select>
+
+      <button class="primary" id="set-save">💾 Зберегти</button>
+      <button class="ghost" id="set-back">🔙 Назад</button>
+    </section>
   </main>
 
   <div id="toast"></div>
