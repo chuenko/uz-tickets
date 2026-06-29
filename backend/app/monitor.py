@@ -186,5 +186,16 @@ class UZMonitor:
         # лише поїзди з вільними місцями
         return {"ok": True, "trains": [t for t in trains if t["total_free"] > 0]}
 
+    async def list_all_trains(self, route: dict) -> dict:
+        """Усі поїзди маршруту (для вибору у налаштуваннях) — без фільтрів."""
+        raw = await self.fetcher.fetch(route["from_id"], route["to_id"], route["date"])
+        if raw is None:
+            return {"ok": False, "trains": []}
+        trains = parse_trains(raw)
+        return {"ok": True, "trains": [
+            {"number": t["number"], "departure": t["departure"], "arrival": t["arrival"]}
+            for t in trains
+        ]}
+
     async def close(self):
         await self.fetcher.close()

@@ -163,4 +163,12 @@ def create_app(monitor) -> FastAPI:
             raise HTTPException(404, "not found")
         return await monitor.fetch_status_json(route)
 
+    @app.get("/api/routes/{key}/trains")
+    async def all_trains(key: str, x_init_data: str = Header(default="", alias="X-Init-Data")):
+        chat_id = await auth(x_init_data)
+        route = storage.get_route(key)
+        if not route or route["chat_id"] != chat_id:
+            raise HTTPException(404, "not found")
+        return await monitor.list_all_trains(route)
+
     return app

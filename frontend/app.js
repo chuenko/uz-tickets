@@ -7,7 +7,7 @@ if (tg) { tg.ready(); tg.expand(); }
 // ── безпечна зона зверху (виріз + шапка Telegram), щоб контент не ліз під них ──
 function applySafeArea() {
   const top = (tg?.safeAreaInset?.top || 0) + (tg?.contentSafeAreaInset?.top || 0);
-  if (top > 0) document.body.style.paddingTop = top + "px";
+  document.documentElement.style.setProperty("--safe-top", top + "px");
 }
 if (tg) {
   tg.onEvent?.("safeAreaChanged", applySafeArea);
@@ -75,12 +75,20 @@ async function loadRoutes() {
 function routeCard(r) {
   const el = document.createElement("div");
   el.className = "route";
-  const dot = r.active ? "🟢" : "🔴";
+  const extra = [];
+  if (r.train_filter) extra.push("поїзди: " + esc(r.train_filter));
+  else if (r.wagon_filter) extra.push("вагони: " + esc(r.wagon_filter));
+  const sub = esc(r.date) + (r.active ? "" : " · ⏸ пауза") + (extra.length ? " · " + extra.join(" · ") : "");
   el.innerHTML = `
-    <div class="title">${dot} ${esc(r.from_name)} → ${esc(r.to_name)}</div>
-    <div class="meta">📅 ${esc(r.date)}${r.wagon_filter ? " · вагони: " + esc(r.wagon_filter) : ""}</div>
+    <div class="row">
+      <div class="ico${r.active ? "" : " paused"}">📍</div>
+      <div>
+        <div class="title">${esc(r.from_name)} → ${esc(r.to_name)}</div>
+        <div class="meta">${sub}</div>
+      </div>
+    </div>
     <div class="actions">
-      <button data-act="status">🔍 Статус</button>
+      <button data-act="status" class="grow">🔍 Статус</button>
       <button data-act="settings">⚙️</button>
       <button data-act="toggle">${r.active ? "⏸" : "▶️"}</button>
       <button data-act="delete" class="danger">🗑</button>
@@ -179,8 +187,9 @@ async function saveRoute() {
 async function openStatus(r) {
   show("view-status");
   $("status-head").innerHTML =
-    `<div class="route"><div class="title">${esc(r.from_name)} → ${esc(r.to_name)}</div>
-     <div class="meta">📅 ${esc(r.date)}</div></div>`;
+    `<div class="route"><div class="row"><div class="ico">📍</div><div>
+       <div class="title">${esc(r.from_name)} → ${esc(r.to_name)}</div>
+       <div class="meta">${esc(r.date)}</div></div></div></div>`;
   $("status-body").innerHTML = '<div class="empty">Завантаження ~10с…</div>';
   try {
     const { ok, trains } = await api(`/api/routes/${r.key}/status`);
@@ -208,15 +217,57 @@ function trainCard(t) {
 // ── налаштування маршруту ─────────────────────
 let settingsKey = null;
 
+function renderTrainChips(trains, selected) {
+  const box = $("set-trains-chips");
+  box.innerHTML = "";
+  const sel = new Set((selected || []).map(s => s.trim().toUpperCase()).filter(Boolean));
+  const items = [], seen = new Set();
+  for (const n of sel) { items.push({ number: n }); seen.add(n); }
+  for (const t of (trains || [])) {
+    const n = (t.number || "").toString();
+    if (n && !seen.has(n.toUpperCase())) { items.push(t); seen.add(n.toUpperCase()); }
+  }
+  if (!items.length) {
+    box.innerHTML = '<div class="meta" style="margin:2px">Натисни «Завантажити список поїздів»</div>';
+    return;
+  }
+  for (const t of items) {
+    const num = (t.number || "").toString();
+    const c = document.createElement("span");
+    c.className = "chip" + (sel.has(num.toUpperCase()) ? " on" : "");
+    c.dataset.num = num;
+    c.textContent = "№" + num + (t.departure ? " · " + t.departure.split(" ").pop() : "");
+    c.onclick = () => c.classList.toggle("on");
+    box.appendChild(c);
+  }
+}
+
+async function loadTrains() {
+  const sel = [...document.querySelectorAll("#set-trains-chips .chip.on")].map(c => c.dataset.num);
+  const btn = $("set-load-trains");
+  btn.textContent = "⏳ Завантаження ~15с…"; btn.disabled = true;
+  try {
+    const { trains } = await api(`/api/routes/${settingsKey}/trains`);
+    renderTrainChips(trains, sel);
+    btn.textContent = "🔄 Оновити список";
+  } catch (e) {
+    toast("Помилка: " + e.message);
+    btn.textContent = "📋 Завантажити список поїздів";
+  }
+  btn.disabled = false;
+}
+
 function openSettings(r) {
   settingsKey = r.key;
   $("set-head").innerHTML =
-    `<div class="route"><div class="title">${esc(r.from_name)} → ${esc(r.to_name)}</div>
-     <div class="meta">📅 ${esc(r.date)}</div></div>`;
+    `<div class="route"><div class="row"><div class="ico">📍</div><div>
+       <div class="title">${esc(r.from_name)} → ${esc(r.to_name)}</div>
+       <div class="meta">${esc(r.date)}</div></div></div></div>`;
   const wf = (r.wagon_filter || "").split(",").map(s => s.trim().toUpperCase()).filter(Boolean);
   document.querySelectorAll("#set-wagons .chip").forEach(c =>
     c.classList.toggle("on", wf.includes(c.dataset.code.toUpperCase())));
-  $("set-trains").value = r.train_filter || "";
+  renderTrainChips([], (r.train_filter || "").split(",").map(s => s.trim()).filter(Boolean));
+  $("set-load-trains").textContent = "📋 Завантажити список поїздів";
   $("set-qfrom").value = r.quiet_from || "";
   $("set-qto").value = r.quiet_to || "";
   show("view-settings");
@@ -224,12 +275,13 @@ function openSettings(r) {
 
 async function saveSettings() {
   const wagons = [...document.querySelectorAll("#set-wagons .chip.on")].map(c => c.dataset.code);
+  const trains = [...document.querySelectorAll("#set-trains-chips .chip.on")].map(c => c.dataset.num);
   try {
     await api(`/api/routes/${settingsKey}/settings`, {
       method: "POST",
       body: JSON.stringify({
         wagon_filter: wagons.join(","),
-        train_filter: $("set-trains").value.trim(),
+        train_filter: trains.join(","),
         quiet_from: $("set-qfrom").value || "",
         quiet_to: $("set-qto").value || "",
       }),
@@ -251,6 +303,7 @@ $("from-q").oninput = searchFrom;
 $("to-q").oninput = searchTo;
 $("set-save").onclick = saveSettings;
 $("set-back").onclick = () => show("view-list");
+$("set-load-trains").onclick = loadTrains;
 // чіпи майстра додавання (зберігають у draft.wagons)
 document.querySelectorAll("#wagons .chip").forEach(c => {
   c.onclick = () => {
