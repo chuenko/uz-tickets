@@ -117,13 +117,34 @@ class UZMonitor:
         new_snap = seats_snapshot(trains)
         changes = diff_seats(route.get("snapshot", {}), new_snap)
         storage.save_snapshot(route["key"], new_snap)
+        if not changes:
+            return
 
-        if changes:
-            log.info("Місця [%s]: %s", route["key"], changes)
-            await self.bot.send_message(
-                route["chat_id"], fmt_alert(changes, trains, route),
-                parse_mode="HTML", disable_web_page_preview=True,
-            )
+        # місця реально з'явилися (вагон з 0/відсутній → >0) — це момент ловлі
+        appeared = any(d == "up" and was <= 0 for (_n, _c, was, _now, d) in changes)
+        avail = any(t["total_free"] > 0 for t in trains)
+        text = fmt_status(trains, route)          # поточна наявність (одне живе повідомлення)
+        live_id = route.get("live_msg_id") or 0
+        chat = route["chat_id"]
+        log.info("Зміни [%s]: appeared=%s avail=%s", route["key"], appeared, avail)
+
+        if appeared:
+            # нова поява місць → окреме повідомлення зі звуком
+            msg = await self.bot.send_message(chat, text, parse_mode="HTML",
+                                              disable_web_page_preview=True)
+            storage.set_live_msg(route["key"], msg.message_id)
+        elif live_id:
+            # лише коливання (більше/менше) → мовчки редагуємо те саме повідомлення
+            try:
+                await self.bot.edit_message_text(text, chat_id=chat, message_id=live_id,
+                                                 parse_mode="HTML", disable_web_page_preview=True)
+            except Exception:
+                msg = await self.bot.send_message(chat, text, parse_mode="HTML",
+                                                  disable_web_page_preview=True)
+                storage.set_live_msg(route["key"], msg.message_id)
+        # місць не лишилось → скинути, щоб наступна поява знову пінгнула
+        if not avail:
+            storage.set_live_msg(route["key"], 0)
 
     async def fetch_status_text(self, route: dict) -> str:
         trains = await self._get_trains(route)

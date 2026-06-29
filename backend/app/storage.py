@@ -41,6 +41,7 @@ def init() -> None:
         "ALTER TABLE routes ADD COLUMN seat_kind TEXT DEFAULT ''",   # kupe/plats/intercity1/intercity2
         "ALTER TABLE routes ADD COLUMN qty INTEGER DEFAULT 1",
         "ALTER TABLE routes ADD COLUMN passengers TEXT DEFAULT '[]'",  # [{"name","surname"}]
+        "ALTER TABLE routes ADD COLUMN live_msg_id INTEGER DEFAULT 0",  # id живого повідомлення
     ):
         try:
             _conn.execute(ddl)
@@ -124,6 +125,12 @@ def set_autobron(key: str, enabled: bool, seat_kind: str = "",
             (1 if enabled else 0, seat_kind, qty,
              json.dumps(passengers or [], ensure_ascii=False), key),
         )
+        _conn.commit()
+
+
+def set_live_msg(key: str, msg_id: int) -> None:
+    with _lock:
+        _conn.execute("UPDATE routes SET live_msg_id = ? WHERE key = ?", (msg_id, key))
         _conn.commit()
 
 
