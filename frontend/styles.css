@@ -116,7 +116,10 @@ button.primary {
   border-color: rgba(255,255,255,.08);
   box-shadow: 0 10px 22px rgba(7,26,51,.18), inset 0 1px 0 rgba(255,255,255,.1);
 }
-button.primary .button-arrow { margin-left: auto; font-size: 19px; font-weight: 400; }
+button.primary .button-arrow {
+  min-width: 22px; height: 22px; margin-left: auto; display: grid; place-items: center;
+  font-size: 19px; line-height: 1; font-weight: 400; transform: translateY(-1px);
+}
 button.ghost {
   color: var(--text); background: rgba(255,255,255,.82); border-color: var(--line);
   font-weight: 750; box-shadow: 0 5px 15px rgba(7,26,51,.045);
@@ -143,7 +146,16 @@ button.bordered { background: var(--surface); color: var(--text); }
   border-color: rgba(255,255,255,.6) !important;
   box-shadow: 0 13px 28px rgba(116,151,0,.2), inset 0 1px 0 rgba(255,255,255,.6) !important; font-size: 15px;
 }
-.button-icon { display: grid; place-items: center; width: 43px; height: 43px; border-radius: 13px; background: rgba(7,26,51,.09); font-size: 25px; font-weight: 400; }
+.button-icon {
+  width: 43px; height: 43px; flex: none; position: relative;
+  border-radius: 13px; background: rgba(7,26,51,.09); font-size: 0;
+}
+.button-icon::before, .button-icon::after {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 17px; height: 2px; border-radius: 2px; background: currentColor;
+  transform: translate(-50%, -50%);
+}
+.button-icon::after { transform: translate(-50%, -50%) rotate(90deg); }
 
 .section-heading { display: flex; justify-content: space-between; align-items: end; margin: 28px 3px 13px; }
 .section-kicker { color: var(--blue); font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
@@ -164,7 +176,19 @@ button.bordered { background: var(--surface); color: var(--text); }
   border: 1px solid var(--line); border-radius: 13px; font-size: 14px; font-weight: 600;
 }
 .results .item:active { background: var(--field); }
-.picked { margin: 12px 0 2px; padding: 13px 15px; color: var(--blue); background: rgba(20,105,255,.07); border-radius: 13px; font-size: 13px; font-weight: 700; }
+.picked {
+  min-height: 52px; margin: 12px 0 2px; padding: 13px 48px 13px 15px;
+  display: flex; align-items: center; position: relative; cursor: pointer;
+  color: var(--blue); background: rgba(20,105,255,.07);
+  border: 1px solid transparent; border-radius: 13px; font-size: 13px; font-weight: 700;
+  transition: background .16s ease, border-color .16s ease;
+}
+.picked::after {
+  content: "✎"; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  width: 27px; height: 27px; display: grid; place-items: center;
+  color: var(--blue); background: rgba(20,105,255,.1); border-radius: 8px; font-size: 13px;
+}
+.picked:hover, .picked:focus-visible { background: rgba(20,105,255,.11); border-color: rgba(20,105,255,.22); outline: none; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 7px; }
 .chip {
@@ -179,10 +203,19 @@ button.bordered { background: var(--surface); color: var(--text); }
 }
 .route .row { display: flex; align-items: center; gap: 12px; }
 .route .ico {
-  width: 43px; height: 43px; flex: none; display: grid; place-items: center;
+  width: 43px; height: 43px; flex: none; position: relative;
   color: var(--navy); background: var(--lime); border-radius: 13px; font-size: 0;
 }
-.route .ico::before { content: "→"; font-size: 20px; font-weight: 800; }
+.route .ico::before {
+  content: ""; position: absolute; width: 15px; height: 2px;
+  left: 50%; top: 50%; border-radius: 2px; background: currentColor;
+  transform: translate(-50%, -50%);
+}
+.route .ico::after {
+  content: ""; position: absolute; width: 6px; height: 6px;
+  left: calc(50% + 2px); top: 50%; border-top: 2px solid currentColor; border-right: 2px solid currentColor;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
 .route .ico.paused { color: #fff; background: #9aa7b4; }
 .route .title { font-size: 14px; font-weight: 800; letter-spacing: -.2px; }
 .route .meta { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.4; }

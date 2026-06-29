@@ -56,6 +56,8 @@ function debounce(fn, ms) {
 
 // ── state ─────────────────────────────────────
 const draft = { from: null, to: null, wagons: new Set() };
+let editingFrom = false;
+let editingTo = false;
 
 // ── список маршрутів ──────────────────────────
 async function loadRoutes() {
@@ -112,6 +114,7 @@ function routeCard(r) {
 
 // ── додавання ─────────────────────────────────
 function startAdd() {
+  editingFrom = editingTo = false;
   draft.from = draft.to = null;
   draft.wagons.clear();
   $("from-q").value = "";
@@ -152,21 +155,71 @@ async function doSearch(q, boxId, onPick) {
 }
 
 function pickFrom(st) {
+  const wasEditing = editingFrom;
+  editingFrom = false;
   draft.from = st;
   $("picked-from").textContent = "Звідки: " + st.name;
   $("from-results").innerHTML = "";
   $("step-from").hidden = true;
+  if (wasEditing) {
+    draft.to = null;
+    $("to-q").value = "";
+    $("to-results").innerHTML = "";
+    $("step-date").hidden = true;
+  }
   $("step-to").hidden = false;
   $("to-q").focus();
 }
 function pickTo(st) {
   if (st.id === draft.from?.id) { toast("Оберіть іншу станцію"); return; }
+  editingTo = false;
   draft.to = st;
   $("picked-to").textContent = `${draft.from.name} → ${st.name}`;
   $("to-results").innerHTML = "";
   $("step-to").hidden = true;
   $("step-date").hidden = false;
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function editFrom() {
+  if (!draft.from) return;
+  editingFrom = true;
+  $("from-q").value = draft.from.name;
+  $("from-results").innerHTML = "";
+  $("step-to").hidden = true;
+  $("step-date").hidden = true;
+  $("step-from").hidden = false;
+  $("from-q").focus();
+  $("from-q").select();
+}
+
+function editTo() {
+  if (!draft.to) return;
+  editingTo = true;
+  $("to-q").value = draft.to.name;
+  $("to-results").innerHTML = "";
+  $("step-from").hidden = true;
+  $("step-date").hidden = true;
+  $("step-to").hidden = false;
+  $("to-q").focus();
+  $("to-q").select();
+}
+
+function restorePickedFrom() {
+  if (!editingFrom || !draft.from) return;
+  editingFrom = false;
+  $("from-results").innerHTML = "";
+  $("step-from").hidden = true;
+  if (draft.to) $("step-date").hidden = false;
+  else $("step-to").hidden = false;
+}
+
+function restorePickedTo() {
+  if (!editingTo || !draft.to) return;
+  editingTo = false;
+  $("to-results").innerHTML = "";
+  $("step-to").hidden = true;
+  $("step-date").hidden = false;
 }
 
 async function saveRoute() {
@@ -307,6 +360,12 @@ $("btn-back").onclick = () => show("view-list");
 $("btn-save").onclick = saveRoute;
 $("from-q").oninput = searchFrom;
 $("to-q").oninput = searchTo;
+$("picked-from").onclick = editFrom;
+$("picked-to").onclick = editTo;
+$("picked-from").onkeydown = e => { if (e.key === "Enter" || e.key === " ") editFrom(); };
+$("picked-to").onkeydown = e => { if (e.key === "Enter" || e.key === " ") editTo(); };
+$("from-q").onblur = () => setTimeout(restorePickedFrom, 180);
+$("to-q").onblur = () => setTimeout(restorePickedTo, 180);
 $("set-save").onclick = saveSettings;
 $("set-back").onclick = () => show("view-list");
 $("set-load-trains").onclick = loadTrains;
