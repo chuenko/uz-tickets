@@ -19,6 +19,8 @@ if (tg) {
 function $(id) { return document.getElementById(id); }
 function show(view) {
   ["view-list", "view-add", "view-status", "view-settings"].forEach(v => $(v).hidden = v !== view);
+  document.body.classList.toggle("subview", view !== "view-list");
+  window.scrollTo({ top: 0, behavior: "instant" });
 }
 function toast(msg) {
   const t = $("toast");
@@ -152,6 +154,8 @@ async function doSearch(q, boxId, onPick) {
 function pickFrom(st) {
   draft.from = st;
   $("picked-from").textContent = "Звідки: " + st.name;
+  $("from-results").innerHTML = "";
+  $("step-from").hidden = true;
   $("step-to").hidden = false;
   $("to-q").focus();
 }
@@ -159,8 +163,10 @@ function pickTo(st) {
   if (st.id === draft.from?.id) { toast("Оберіть іншу станцію"); return; }
   draft.to = st;
   $("picked-to").textContent = `${draft.from.name} → ${st.name}`;
+  $("to-results").innerHTML = "";
+  $("step-to").hidden = true;
   $("step-date").hidden = false;
-  $("step-date").scrollIntoView({ behavior: "smooth" });
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 async function saveRoute() {

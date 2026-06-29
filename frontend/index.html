@@ -47,6 +47,7 @@
 
     <!-- Майстер додавання -->
     <section id="view-add" hidden>
+      <button class="back-button" id="btn-cancel"><span>←</span> До маршрутів</button>
       <div class="step" id="step-from">
         <label>Станція відправлення</label>
         <input id="from-q" placeholder="Напр.: Київ, Львів, Варшава" autocomplete="off" />
@@ -74,19 +75,18 @@
         </div>
         <button class="primary" id="btn-save">Зберегти маршрут <span class="button-arrow">→</span></button>
       </div>
-
-      <button class="ghost" id="btn-cancel">Скасувати</button>
     </section>
 
     <!-- Статус -->
     <section id="view-status" hidden>
+      <button class="back-button" id="btn-back"><span>←</span> До маршрутів</button>
       <div id="status-head"></div>
       <div id="status-body"></div>
-      <button class="ghost" id="btn-back">← Назад</button>
     </section>
 
     <!-- Налаштування маршруту -->
     <section id="view-settings" hidden>
+      <button class="back-button" id="set-back"><span>←</span> До маршрутів</button>
       <div id="set-head"></div>
 
       <label>Тип вагона <span class="hint">(порожньо = всі)</span></label>
@@ -116,7 +116,6 @@
       </select>
 
       <button class="primary" id="set-save">Зберегти зміни <span class="button-arrow">→</span></button>
-      <button class="ghost" id="set-back">← Назад</button>
     </section>
   </main>
 
