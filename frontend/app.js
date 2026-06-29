@@ -291,11 +291,14 @@ function routeStopTime(stop) {
   return esc(arrival || departure || "—");
 }
 
-function openRouteSheet(train) {
-  const stops = train.stops?.length ? train.stops : [
+function fallbackStops(train) {
+  return [
     { name: statusRoute?.from_name || "Станція відправлення", departure: train.departure, note: "початкова" },
     { name: statusRoute?.to_name || "Станція призначення", arrival: train.arrival, note: "кінцева" },
   ];
+}
+
+function renderRouteStops(train, stops) {
   $("sheet-title").textContent = `Маршрут №${train.number}`;
   $("sheet-route").innerHTML = `<div class="route-timeline">${stops.map((stop, i) => `
     <div class="route-stop">
@@ -306,8 +309,37 @@ function openRouteSheet(train) {
         ${stop.note ? `<div class="route-stop-note">${esc(stop.note)}</div>` : ""}
       </div>
     </div>`).join("")}</div>`;
+}
+
+async function openRouteSheet(train) {
   $("route-sheet").hidden = false;
   document.body.classList.add("sheet-open");
+  $("sheet-title").textContent = `Маршрут №${train.number}`;
+
+  if (train.stops?.length) {
+    renderRouteStops(train, train.stops);
+    return;
+  }
+
+  $("sheet-route").innerHTML = '<div class="sheet-loading"><i></i><span>Завантажуємо повний маршрут…</span></div>';
+  if (!train.id || !statusRoute?.key) {
+    renderRouteStops(train, fallbackStops(train));
+    return;
+  }
+
+  try {
+    const result = await api(`/api/routes/${statusRoute.key}/trips/${encodeURIComponent(train.id)}/route`);
+    if (result.ok && result.stops?.length) {
+      train.stops = result.stops;
+      renderRouteStops(train, result.stops);
+    } else {
+      renderRouteStops(train, fallbackStops(train));
+      toast("Повний маршрут недоступний");
+    }
+  } catch (e) {
+    renderRouteStops(train, fallbackStops(train));
+    toast("Не вдалося завантажити маршрут");
+  }
 }
 
 function closeRouteSheet() {

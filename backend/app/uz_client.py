@@ -150,7 +150,7 @@ class UZFetcher:
                      config.USER_DATA_DIR, config.HEADLESS, bool(proxy))
 
     async def fetch(
-        self, from_id: str, to_id: str, date: str, include_routes: bool = False
+        self, from_id: str, to_id: str, date: str, route_trip_id: str = ""
     ) -> Optional[dict]:
         """Повертає сирий JSON відповіді /api/v3/trips або None."""
         if self.context is None:
@@ -180,8 +180,8 @@ class UZFetcher:
             await page.goto(url, wait_until="domcontentloaded", timeout=45_000)
             try:
                 await asyncio.wait_for(got.wait(), timeout=40)
-                if result is not None and include_routes:
-                    await self._fetch_route_details(page, result)
+                if result is not None and route_trip_id:
+                    await self._fetch_route_detail(page, result, route_trip_id)
             except asyncio.TimeoutError:
                 log.warning("Таймаут [%s→%s %s]", from_id, to_id, date)
                 await self._diagnose(page)
@@ -191,34 +191,46 @@ class UZFetcher:
             await page.close()
         return result
 
-    async def _fetch_route_details(self, page, trips: dict) -> None:
-        """Відкриває «Деталі маршруту» та додає повний список зупинок до рейсів."""
+    async def _fetch_route_detail(self, page, trips: dict, trip_id: str) -> None:
+        """Завантажує повний маршрут лише одного вибраного рейсу."""
+        items = _trip_items(trips)
+        target_index = next((
+            index for index, item in enumerate(items)
+            if isinstance(item, dict) and str(
+                (item.get("train") if isinstance(item.get("train"), dict) else item).get("id")
+                or (item.get("train") if isinstance(item.get("train"), dict) else item).get("trip_id")
+                or item.get("id") or item.get("trip_id") or ""
+            ) == str(trip_id)
+        ), None)
+        if target_index is None:
+            log.warning("Рейс id=%s відсутній у результатах", trip_id)
+            return
+
         try:
             buttons = page.get_by_role("button", name="Деталі маршруту", exact=True)
             await buttons.first.wait_for(state="visible", timeout=8_000)
             count = await buttons.count()
+            if target_index >= count:
+                log.warning("Кнопка маршруту id=%s відсутня", trip_id)
+                return
         except Exception as e:
             log.warning("Кнопки деталей маршруту не знайдені: %s", e)
             return
 
-        loaded = 0
-        for index in range(count):
-            try:
-                async with page.expect_response(
-                    lambda response: re.search(r"/api/v3/trips/\d+(?:\?.*)?$", response.url) is not None,
-                    timeout=12_000,
-                ) as response_info:
-                    await buttons.nth(index).click(force=True)
-                response = await response_info.value
-                if response.status != 200:
-                    continue
-                detail = await response.json()
-                trip_id = re.search(r"/api/v3/trips/(\d+)", response.url).group(1)
-                _attach_trip_detail(trips, trip_id, detail)
-                loaded += 1
-            except Exception as e:
-                log.warning("Маршрут поїзда #%s не завантажено: %s", index + 1, e)
-        log.info("Завантажено повних маршрутів: %s/%s", loaded, count)
+        try:
+            async with page.expect_response(
+                lambda response: re.search(
+                    rf"/api/v3/trips/{re.escape(str(trip_id))}(?:\?.*)?$", response.url
+                ) is not None,
+                timeout=15_000,
+            ) as response_info:
+                await buttons.nth(target_index).click(force=True)
+            response = await response_info.value
+            if response.status == 200:
+                _attach_trip_detail(trips, str(trip_id), await response.json())
+                log.info("Повний маршрут id=%s завантажено", trip_id)
+        except Exception as e:
+            log.warning("Маршрут id=%s не завантажено: %s", trip_id, e)
 
     async def _diagnose(self, page) -> None:
         """На таймауті — з'ясувати, чи це Cloudflare-челендж."""
