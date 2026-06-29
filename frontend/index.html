@@ -9,15 +9,20 @@
   <script src="config.js"></script>
 </head>
 <body>
-  <header>
-    <h1>Укрзалізниця квитки</h1>
-    <div id="sub">Моніторинг місць</div>
+  <header class="header">
+    <div class="nav-bar"><div class="abstract-graphic">🚆</div></div>
+    <h1 class="header-title">Укрзалізниця квитки</h1>
+    <div class="header-sub">Моніторинг квитків УЗ</div>
+    <svg class="header-wave" viewBox="0 0 1440 22" preserveAspectRatio="none">
+      <path d="M0,22 L1440,22 L1440,7 C1080,24 360,24 0,7 Z"></path>
+    </svg>
   </header>
 
   <main id="app">
     <!-- Список маршрутів -->
     <section id="view-list">
       <button class="primary" id="btn-add">➕ Додати маршрут</button>
+      <h2 class="section-title">Мої маршрути</h2>
       <div id="routes"></div>
     </section>
 
