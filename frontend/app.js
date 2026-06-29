@@ -4,6 +4,17 @@ const INIT = tg?.initData || "";
 
 if (tg) { tg.ready(); tg.expand(); }
 
+// ── безпечна зона зверху (виріз + шапка Telegram), щоб контент не ліз під них ──
+function applySafeArea() {
+  const top = (tg?.safeAreaInset?.top || 0) + (tg?.contentSafeAreaInset?.top || 0);
+  if (top > 0) document.body.style.paddingTop = top + "px";
+}
+if (tg) {
+  tg.onEvent?.("safeAreaChanged", applySafeArea);
+  tg.onEvent?.("contentSafeAreaChanged", applySafeArea);
+  applySafeArea();
+}
+
 // ── helpers ───────────────────────────────────
 function $(id) { return document.getElementById(id); }
 function show(view) {

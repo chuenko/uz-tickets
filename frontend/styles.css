@@ -18,6 +18,8 @@ body {
   background: var(--bg);
   color: var(--text);
   font-size: 15px;
+  /* безпечна зона зверху (виріз екрана + шапка Telegram); JS уточнює через TG API */
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 header {
