@@ -128,11 +128,8 @@ class UZMonitor:
             except Exception as e:
                 log.error("Маршрут %s: %s", route["key"], e)
 
-    async def _get_trains(self, route: dict, include_routes: bool = False) -> list[dict] | None:
-        raw = await self.fetcher.fetch(
-            route["from_id"], route["to_id"], route["date"],
-            include_routes=include_routes,
-        )
+    async def _get_trains(self, route: dict) -> list[dict] | None:
+        raw = await self.fetcher.fetch(route["from_id"], route["to_id"], route["date"])
         if raw is None:
             return None
         trains = parse_trains(raw)
@@ -183,7 +180,7 @@ class UZMonitor:
         return fmt_status(trains, route)
 
     async def fetch_status_json(self, route: dict) -> dict:
-        trains = await self._get_trains(route, include_routes=True)
+        trains = await self._get_trains(route)
         if trains is None:
             return {"ok": False, "trains": []}
         # лише поїзди з вільними місцями
