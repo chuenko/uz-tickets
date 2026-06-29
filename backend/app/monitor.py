@@ -7,7 +7,7 @@ from aiogram import Bot
 
 from . import config, storage
 from .parser import (
-    parse_trains, apply_wagon_filter, seats_snapshot, diff_new_seats,
+    parse_trains, apply_wagon_filter, seats_snapshot, diff_seats,
     WAGON_TYPE_NAMES,
 )
 from .uz_client import UZFetcher
@@ -51,11 +51,16 @@ def fmt_status(trains: list[dict], route: dict) -> str:
 def fmt_alert(changes: list[tuple], trains: list[dict], route: dict) -> str:
     link = buy_link(route)
     train_map = {t["number"]: t for t in trains}
-    lines = [
-        "🔔 <b>З'явилися місця!</b>",
-        f"🗺 {route['from_name']} → {route['to_name']}  📅 {route['date']}",
-    ]
-    for num, code, was, now in changes:
+    up = any(d == "up" for *_, d in changes)
+    down = any(d == "down" for *_, d in changes)
+    if up and not down:
+        head = "🔔 <b>З'явилися місця!</b>"
+    elif down and not up:
+        head = "📉 <b>Місць меншає!</b>"
+    else:
+        head = "🔔 <b>Зміна місць</b>"
+    lines = [head, f"🗺 {route['from_name']} → {route['to_name']}  📅 {route['date']}"]
+    for num, code, was, now, direction in changes:
         t = train_map.get(num)
         dep = t["departure"] if t else "—"
         arr = t["arrival"] if t else "—"
@@ -63,9 +68,11 @@ def fmt_alert(changes: list[tuple], trains: list[dict], route: dict) -> str:
         price = ""
         if t and code in t["seats"] and t["seats"][code]["price"]:
             price = f", від {t['seats'][code]['price']} грн"
+        arrow = "📈" if direction == "up" else "📉"
+        was_str = str(was) if was >= 0 else "0"
         lines.append(
-            f"📈 <b>№{num}</b> ({dep}→{arr})\n"
-            f"   {wagon} ({code}): <b>{now}</b> місць{price}"
+            f"{arrow} <b>№{num}</b> ({dep}→{arr})\n"
+            f"   {wagon} ({code}): {was_str} → <b>{now}</b> місць{price}"
         )
     lines.append(f"🔗 <a href='{link}'>Купити квиток</a>")
     return "\n\n".join(lines)
@@ -108,7 +115,7 @@ class UZMonitor:
         if trains is None:
             return
         new_snap = seats_snapshot(trains)
-        changes = diff_new_seats(route.get("snapshot", {}), new_snap)
+        changes = diff_seats(route.get("snapshot", {}), new_snap)
         storage.save_snapshot(route["key"], new_snap)
 
         if changes:

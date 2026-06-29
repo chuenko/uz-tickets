@@ -109,17 +109,23 @@ def seats_snapshot(trains: list[dict]) -> dict:
     }
 
 
-def diff_new_seats(old: dict, new: dict) -> list[tuple]:
-    """Повертає зміни, де місць СТАЛО БІЛЬШЕ (поява квитків).
+def diff_seats(old: dict, new: dict) -> list[tuple]:
+    """Усі зміни кількості місць: поява/зростання ('up') і спад ('down').
 
-    (номер, код, було, стало). Старе -1 = вагон уперше побачено.
+    Повертає (номер, код, було, стало, напрям). Старе -1 = вагон уперше бачимо
+    (повідомляємо лише якщо вже є місця).
     """
     changes = []
     for num, new_seats in new.items():
         old_seats = old.get(num, {})
         for code, now in new_seats.items():
             was = old_seats.get(code, -1)
-            # цікавлять лише появи місць: з 0/невідомо → >0, або зростання
-            if now > 0 and now > max(was, 0):
-                changes.append((num, code, was, now))
+            if now == was:
+                continue
+            if was < 0:
+                # вперше побачили вагон — цікаво лише якщо є місця
+                if now > 0:
+                    changes.append((num, code, was, now, "up"))
+            else:
+                changes.append((num, code, was, now, "up" if now > was else "down"))
     return changes
