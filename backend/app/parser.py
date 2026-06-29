@@ -64,7 +64,10 @@ def _fmt_stop_time(value) -> str:
 def _route_stops(train_obj: dict, raw: dict) -> list[dict]:
     """Нормалізує зупинки, якщо UZ включив їх у відповідь рейсу."""
     candidates = []
-    for source in (train_obj, raw):
+    detail = raw.get("route_detail") if isinstance(raw.get("route_detail"), dict) else {}
+    detail_data = detail.get("data") if isinstance(detail.get("data"), dict) else {}
+    detail_trip = detail.get("trip") if isinstance(detail.get("trip"), dict) else {}
+    for source in (detail, detail_data, detail_trip, train_obj, raw):
         for key in ("stops", "stations", "route_stations", "route", "itinerary"):
             value = source.get(key)
             if isinstance(value, list):
@@ -125,6 +128,7 @@ def parse_trains(data: Any) -> list[dict]:
             seats[code] = {"title": title, "seats": count, "price": price}
 
         trains.append({
+            "id": str(train_obj.get("id") or train_obj.get("trip_id") or raw.get("id") or raw.get("trip_id") or ""),
             "number": number,
             "departure": departure,
             "arrival": arrival,
