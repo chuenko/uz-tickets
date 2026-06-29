@@ -42,6 +42,10 @@ def init() -> None:
         "ALTER TABLE routes ADD COLUMN qty INTEGER DEFAULT 1",
         "ALTER TABLE routes ADD COLUMN passengers TEXT DEFAULT '[]'",  # [{"name","surname"}]
         "ALTER TABLE routes ADD COLUMN live_msg_id INTEGER DEFAULT 0",  # id живого повідомлення
+        "ALTER TABLE routes ADD COLUMN train_filter TEXT DEFAULT ''",   # тільки ці № поїздів
+        "ALTER TABLE routes ADD COLUMN quiet_from TEXT DEFAULT ''",     # тихі години HH:MM
+        "ALTER TABLE routes ADD COLUMN quiet_to TEXT DEFAULT ''",
+        "ALTER TABLE routes ADD COLUMN notify_on TEXT DEFAULT 'appear_decrease'",  # коли пінгувати (резерв)
     ):
         try:
             _conn.execute(ddl)
@@ -125,6 +129,18 @@ def set_autobron(key: str, enabled: bool, seat_kind: str = "",
             (1 if enabled else 0, seat_kind, qty,
              json.dumps(passengers or [], ensure_ascii=False), key),
         )
+        _conn.commit()
+
+
+def set_settings(key: str, **fields) -> None:
+    """Оновлює лише передані поля налаштувань маршруту."""
+    allowed = {"wagon_filter", "train_filter", "quiet_from", "quiet_to", "notify_on"}
+    fields = {k: v for k, v in fields.items() if k in allowed and v is not None}
+    if not fields:
+        return
+    clause = ", ".join(f"{k} = ?" for k in fields)
+    with _lock:
+        _conn.execute(f"UPDATE routes SET {clause} WHERE key = ?", (*fields.values(), key))
         _conn.commit()
 
 

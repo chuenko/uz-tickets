@@ -130,6 +130,22 @@ def create_app(monitor) -> FastAPI:
         storage.delete_route(key)
         return {"ok": True}
 
+    class SettingsBody(BaseModel):
+        wagon_filter: str | None = None
+        train_filter: str | None = None
+        quiet_from: str | None = None
+        quiet_to: str | None = None
+        notify_on: str | None = None
+
+    @app.post("/api/routes/{key}/settings")
+    async def update_settings(key: str, body: SettingsBody, x_init_data: str = Header(default="", alias="X-Init-Data")):
+        chat_id = await auth(x_init_data)
+        route = storage.get_route(key)
+        if not route or route["chat_id"] != chat_id:
+            raise HTTPException(404, "not found")
+        storage.set_settings(key, **body.model_dump(exclude_none=True))
+        return {"ok": True}
+
     @app.post("/api/routes/{key}/active")
     async def toggle(key: str, active: bool, x_init_data: str = Header(default="", alias="X-Init-Data")):
         chat_id = await auth(x_init_data)

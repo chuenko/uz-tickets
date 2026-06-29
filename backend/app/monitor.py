@@ -3,6 +3,12 @@ import asyncio
 import logging
 from datetime import datetime
 
+try:
+    from zoneinfo import ZoneInfo
+    _KYIV = ZoneInfo("Europe/Kyiv")
+except Exception:
+    _KYIV = None
+
 from aiogram import Bot
 
 from . import config, storage
@@ -13,6 +19,25 @@ from .parser import (
 from .uz_client import UZFetcher
 
 log = logging.getLogger(__name__)
+
+
+def _apply_train_filter(trains: list[dict], train_filter: str) -> list[dict]:
+    """Лишає лише потрібні номери поїздів (порожньо = всі). Збіг за підрядком."""
+    toks = [t.strip().upper() for t in (train_filter or "").split(",") if t.strip()]
+    if not toks:
+        return trains
+    return [tr for tr in trains if any(tok in str(tr["number"]).upper() for tok in toks)]
+
+
+def in_quiet_hours(route: dict) -> bool:
+    """Чи зараз тихі години (за київським часом)."""
+    qf, qt = route.get("quiet_from", ""), route.get("quiet_to", "")
+    if not qf or not qt:
+        return False
+    now = datetime.now(_KYIV).strftime("%H:%M") if _KYIV else datetime.now().strftime("%H:%M")
+    if qf <= qt:
+        return qf <= now < qt
+    return now >= qf or now < qt   # через північ
 
 
 def buy_link(route: dict) -> str:
@@ -108,6 +133,7 @@ class UZMonitor:
         if raw is None:
             return None
         trains = parse_trains(raw)
+        trains = _apply_train_filter(trains, route.get("train_filter", ""))
         return apply_wagon_filter(trains, route.get("wagon_filter", ""))
 
     async def check_route(self, route: dict):
@@ -129,9 +155,10 @@ class UZMonitor:
         log.info("Зміни [%s]: appeared=%s avail=%s", route["key"], appeared, avail)
 
         if appeared:
-            # нова поява місць → окреме повідомлення зі звуком
+            # нова поява місць → окреме повідомлення (вночі — без звуку)
             msg = await self.bot.send_message(chat, text, parse_mode="HTML",
-                                              disable_web_page_preview=True)
+                                              disable_web_page_preview=True,
+                                              disable_notification=in_quiet_hours(route))
             storage.set_live_msg(route["key"], msg.message_id)
         elif live_id:
             # лише коливання (більше/менше) → мовчки редагуємо те саме повідомлення
