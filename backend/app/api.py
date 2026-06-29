@@ -140,7 +140,7 @@ def create_app(monitor) -> FastAPI:
         seat_kind: str | None = None
         qty: int | None = None
         passengers: list[dict] | None = None
-        seat_pick: list | None = None
+        seat_pick: list[int] | None = None
 
     @app.post("/api/routes/{key}/settings")
     async def update_settings(key: str, body: SettingsBody, x_init_data: str = Header(default="", alias="X-Init-Data")):
@@ -182,16 +182,5 @@ def create_app(monitor) -> FastAPI:
         if not route or route["chat_id"] != chat_id:
             raise HTTPException(404, "not found")
         return await monitor.list_all_trains(route)
-
-    @app.get("/api/routes/{key}/seat-map")
-    async def seat_map(
-        key: str, trip_id: str, class_code: str,
-        x_init_data: str = Header(default="", alias="X-Init-Data"),
-    ):
-        chat_id = await auth(x_init_data)
-        route = storage.get_route(key)
-        if not route or route["chat_id"] != chat_id:
-            raise HTTPException(404, "not found")
-        return await monitor.fetch_seat_map_json(route, trip_id, class_code)
 
     return app
