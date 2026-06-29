@@ -4,23 +4,6 @@ const INIT = tg?.initData || "";
 
 if (tg) { tg.ready(); tg.expand(); }
 
-// ── діагностика: показуємо стан Telegram WebApp ──
-(function diag() {
-  const sub = document.getElementById("sub");
-  if (!sub) return;
-  if (!tg) {
-    sub.textContent = "⚠️ Не в Telegram (SDK не завантажено)";
-    sub.style.color = "#e05c5c";
-    return;
-  }
-  const len = INIT.length;
-  sub.textContent = `${tg.platform} v${tg.version} · initData:${len}`;
-  if (len === 0) {
-    sub.textContent += " ⚠️ порожній";
-    sub.style.color = "#e05c5c";
-  }
-})();
-
 // ── helpers ───────────────────────────────────
 function $(id) { return document.getElementById(id); }
 function show(view) {
@@ -197,16 +180,15 @@ async function openStatus(r) {
 }
 
 function trainCard(t) {
-  const seats = Object.entries(t.seats).map(([code, s]) => {
-    const cls = s.seats > 0 ? "ok" : "no";
-    const icon = s.seats > 0 ? "✅" : "❌";
-    const price = s.price ? `, від ${s.price} грн` : "";
-    return `<div class="seat ${cls}">${icon} ${esc(s.title)} (${esc(code)}): <b>${s.seats}</b> місць${price}</div>`;
-  }).join("") || '<div class="seat no">❌ Місць немає</div>';
+  const rows = Object.entries(t.seats)
+    .filter(([, s]) => s.seats > 0)
+    .map(([code, s]) =>
+      `<tr><td class="ty">${esc(s.title)}</td><td class="n">${s.seats}</td><td class="p">${s.price ? s.price + "₴" : "—"}</td></tr>`)
+    .join("");
+  if (!rows) return "";
   return `<div class="train">
-      <span class="num">🚂 №${esc(t.number)}</span>
-      <span class="time"> 🕐 ${esc(t.departure)} → ${esc(t.arrival)}</span>
-      ${seats}
+      <div class="thead"><span class="tnum">№${esc(t.number)}</span><span class="ttime">${esc(t.departure)} → ${esc(t.arrival)}</span></div>
+      <table class="seats">${rows}</table>
     </div>`;
 }
 
