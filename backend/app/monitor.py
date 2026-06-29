@@ -128,8 +128,11 @@ class UZMonitor:
             except Exception as e:
                 log.error("Маршрут %s: %s", route["key"], e)
 
-    async def _get_trains(self, route: dict) -> list[dict] | None:
-        raw = await self.fetcher.fetch(route["from_id"], route["to_id"], route["date"])
+    async def _get_trains(self, route: dict, include_routes: bool = False) -> list[dict] | None:
+        raw = await self.fetcher.fetch(
+            route["from_id"], route["to_id"], route["date"],
+            include_routes=include_routes,
+        )
         if raw is None:
             return None
         trains = parse_trains(raw)
@@ -180,23 +183,11 @@ class UZMonitor:
         return fmt_status(trains, route)
 
     async def fetch_status_json(self, route: dict) -> dict:
-        trains = await self._get_trains(route)
+        trains = await self._get_trains(route, include_routes=True)
         if trains is None:
             return {"ok": False, "trains": []}
         # лише поїзди з вільними місцями
         return {"ok": True, "trains": [t for t in trains if t["total_free"] > 0]}
-
-    async def fetch_route_json(self, route: dict, trip_id: str) -> dict:
-        raw = await self.fetcher.fetch(
-            route["from_id"], route["to_id"], route["date"],
-            route_trip_id=trip_id,
-        )
-        if raw is None:
-            return {"ok": False, "stops": []}
-        train = next((t for t in parse_trains(raw) if t["id"] == str(trip_id)), None)
-        if not train or not train["stops"]:
-            return {"ok": False, "stops": []}
-        return {"ok": True, "stops": train["stops"]}
 
     async def list_all_trains(self, route: dict) -> dict:
         """Усі поїзди маршруту (для вибору у налаштуваннях) — без фільтрів."""

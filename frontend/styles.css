@@ -292,17 +292,6 @@ a { color: var(--blue); }
   border-radius: 12px; font-size: 24px; line-height: 1; box-shadow: none;
 }
 .route-timeline { padding: 2px 0 2px 4px; }
-.sheet-loading {
-  min-height: 180px; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 13px;
-  color: var(--muted); font-size: 11px; font-weight: 650;
-}
-.sheet-loading i {
-  width: 28px; height: 28px; border: 3px solid var(--line);
-  border-top-color: var(--blue); border-radius: 50%;
-  animation: spin .75s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
 .route-stop {
   min-height: 66px; display: grid; grid-template-columns: 54px 22px minmax(0,1fr);
   gap: 9px; position: relative;
