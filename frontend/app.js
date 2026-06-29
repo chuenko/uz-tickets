@@ -254,21 +254,24 @@ async function openStatus(r) {
     const { ok, trains } = await api(`/api/routes/${r.key}/status`);
     if (!ok) { $("status-body").innerHTML = '<div class="empty">⚠️ Не вдалося отримати дані</div>'; return; }
     if (!trains.length) { $("status-body").innerHTML = '<div class="empty">Поїздів не знайдено</div>'; return; }
-    $("status-body").innerHTML = trains.map(trainCard).join("");
+    $("status-body").innerHTML = trains.map(t => trainCard(t, r)).join("");
   } catch (e) {
     $("status-body").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
   }
 }
 
-function trainCard(t) {
+function trainCard(t, route) {
+  const bookingUrl =
+    `https://booking.uz.gov.ua/search-trips/${encodeURIComponent(route.from_id)}/` +
+    `${encodeURIComponent(route.to_id)}/list?startDate=${encodeURIComponent(route.date)}`;
   const rows = Object.entries(t.seats)
     .filter(([, s]) => s.seats > 0)
     .map(([code, s]) =>
-      `<tr><td class="ty">${esc(s.title)}</td><td class="n">${s.seats}</td><td class="p">${s.price ? s.price + "₴" : "—"}</td></tr>`)
+      `<tr><td class="ty"><a class="train-link" href="${bookingUrl}" target="_blank" rel="noopener">${esc(s.title)}<span>↗</span></a></td><td class="n">${s.seats}</td><td class="p">${s.price ? s.price + "₴" : "—"}</td></tr>`)
     .join("");
   if (!rows) return "";
   return `<div class="train">
-      <div class="thead"><span class="tnum">№${esc(t.number)}</span><span class="ttime">${esc(t.departure)} → ${esc(t.arrival)}</span></div>
+      <div class="thead"><a class="tnum train-link" href="${bookingUrl}" target="_blank" rel="noopener">№${esc(t.number)}<span>↗</span></a><span class="ttime">${esc(t.departure)} → ${esc(t.arrival)}</span></div>
       <table class="seats">${rows}</table>
     </div>`;
 }
