@@ -201,6 +201,12 @@ button.bordered { background: var(--surface); color: var(--text); }
   border: 1.5px solid transparent; border-radius: 20px; font-size: 12px; font-weight: 700; transition: .15s ease;
 }
 .chip.on { color: #fff; background: var(--blue); border-color: var(--blue); box-shadow: 0 5px 13px rgba(20,105,255,.2); }
+.train-add-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 10px; }
+.train-add-row input { min-width: 0; margin: 0; text-transform: uppercase; }
+.train-add-row button {
+  width: auto; min-height: 48px; margin: 0; padding: 0 16px;
+  color: #fff; background: var(--navy); border-radius: 13px; font-size: 12px;
+}
 
 .route, .train {
   margin-bottom: 10px; padding: 15px; background: var(--surface);

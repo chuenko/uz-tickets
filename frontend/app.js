@@ -331,6 +331,21 @@ function renderTrainChips(trains, selected) {
   }
 }
 
+function addTrainManually() {
+  const input = $("set-train-manual");
+  const number = input.value.trim().replace(/^№\s*/, "").toUpperCase();
+  if (!number) return;
+  if (!/^[0-9]{1,4}[A-ZА-ЯІЇЄҐ]?$/.test(number)) {
+    toast("Введіть номер, наприклад 120Д");
+    return;
+  }
+  const selected = [...document.querySelectorAll("#set-trains-chips .chip.on")]
+    .map(c => c.dataset.num);
+  if (!selected.some(n => n.toUpperCase() === number)) selected.push(number);
+  renderTrainChips([], selected);
+  input.value = "";
+}
+
 async function loadTrains() {
   const sel = [...document.querySelectorAll("#set-trains-chips .chip.on")].map(c => c.dataset.num);
   const btn = $("set-load-trains");
@@ -356,6 +371,7 @@ function openSettings(r) {
   document.querySelectorAll("#set-wagons .chip").forEach(c =>
     c.classList.toggle("on", wf.includes(c.dataset.code.toUpperCase())));
   renderTrainChips([], (r.train_filter || "").split(",").map(s => s.trim()).filter(Boolean));
+  $("set-train-manual").value = "";
   $("set-load-trains").textContent = "📋 Завантажити список поїздів";
   $("set-qfrom").value = r.quiet_from || "";
   $("set-qto").value = r.quiet_to || "";
@@ -414,6 +430,13 @@ $("to-q").onblur = () => setTimeout(restorePickedTo, 180);
 $("set-save").onclick = saveSettings;
 $("set-back").onclick = () => show("view-list");
 $("set-load-trains").onclick = loadTrains;
+$("set-add-train").onclick = addTrainManually;
+$("set-train-manual").onkeydown = e => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    addTrainManually();
+  }
+};
 $("set-autobron").onchange = toggleAutobronFields;
 $("add-passenger").onclick = () => {
   settingsPassengers.push({ name: "", surname: "" });
