@@ -84,13 +84,14 @@ function routeCard(r) {
   const extra = [];
   if (r.train_filter) extra.push("поїзди: " + esc(r.train_filter));
   else if (r.wagon_filter) extra.push("вагони: " + esc(r.wagon_filter));
-  const sub = esc(r.date) + (r.active ? "" : " · ⏸ пауза") + (extra.length ? " · " + extra.join(" · ") : "");
+  const sub = (r.active ? "" : "⏸ пауза") + (extra.length ? (r.active ? "" : " · ") + extra.join(" · ") : "");
   el.innerHTML = `
     <div class="row">
       <div class="ico${r.active ? "" : " paused"}"></div>
       <div>
         <div class="title">${esc(r.from_name)} → ${esc(r.to_name)}</div>
-        <div class="meta">${sub}</div>
+        <div class="route-date">📅 ${esc(r.date)}</div>
+        ${sub ? `<div class="meta">${sub}</div>` : ""}
       </div>
     </div>
     <div class="actions">
@@ -250,7 +251,7 @@ async function openStatus(r) {
   $("status-head").innerHTML =
     `<div class="route"><div class="row"><div class="ico"></div><div>
        <div class="title">${esc(r.from_name)} → ${esc(r.to_name)}</div>
-       <div class="meta">${esc(r.date)}</div></div></div></div>`;
+       <div class="route-date">📅 ${esc(r.date)}</div></div></div></div>`;
   $("status-body").innerHTML = '<div class="empty">Завантаження ~10с…</div>';
   try {
     const { ok, trains } = await api(`/api/routes/${r.key}/status`);
@@ -366,7 +367,7 @@ function openSettings(r) {
   $("set-head").innerHTML =
     `<div class="route"><div class="row"><div class="ico"></div><div>
        <div class="title">${esc(r.from_name)} → ${esc(r.to_name)}</div>
-       <div class="meta">${esc(r.date)}</div></div></div></div>`;
+       <div class="route-date">📅 ${esc(r.date)}</div></div></div></div>`;
   const wf = (r.wagon_filter || "").split(",").map(s => s.trim().toUpperCase()).filter(Boolean);
   document.querySelectorAll("#set-wagons .chip").forEach(c =>
     c.classList.toggle("on", wf.includes(c.dataset.code.toUpperCase())));

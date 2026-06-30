@@ -229,6 +229,12 @@ button.bordered { background: var(--surface); color: var(--text); }
 }
 .route .ico.paused { color: #fff; background: #9aa7b4; }
 .route .title { font-size: 14px; font-weight: 800; letter-spacing: -.2px; }
+.route .route-date {
+  width: fit-content; margin-top: 7px; padding: 5px 9px;
+  color: var(--navy); background: rgba(20,105,255,.09);
+  border: 1px solid rgba(20,105,255,.13); border-radius: 9px;
+  font-size: 14px; font-weight: 850; line-height: 1;
+}
 .route .meta { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.4; }
 .route .actions { display: flex; gap: 7px; margin-top: 13px; padding-top: 12px; border-top: 1px solid var(--field); }
 .route .actions button {
