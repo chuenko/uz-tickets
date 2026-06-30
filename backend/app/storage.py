@@ -140,9 +140,9 @@ def set_settings(key: str, **fields) -> None:
         "autobron", "seat_kind", "qty", "passengers", "seat_pick",
     }
     fields = {k: v for k, v in fields.items() if k in allowed and v is not None}
-    for key in ("passengers", "seat_pick"):
-        if key in fields:
-            fields[key] = json.dumps(fields[key], ensure_ascii=False)
+    for json_field in ("passengers", "seat_pick"):
+        if json_field in fields:
+            fields[json_field] = json.dumps(fields[json_field], ensure_ascii=False)
     if "autobron" in fields:
         fields["autobron"] = 1 if fields["autobron"] else 0
     if not fields:
