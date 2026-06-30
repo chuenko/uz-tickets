@@ -63,7 +63,8 @@ def fmt_status(trains: list[dict], route: dict) -> str:
     # лише поїзди, де є вільні місця
     avail = [t for t in trains if t["total_free"] > 0]
     head = (
-        f"📋 <b>{route['from_name']} → {route['to_name']}</b>  📅 {route['date']}\n"
+        f"📋 <b>{route['from_name']} → {route['to_name']}</b>\n\n"
+        f"📅 <b>ДАТА ПОЇЗДКИ: {route['date']}</b>\n\n"
         f"З місцями: {len(avail)} із {len(trains)}\n{'─' * 26}"
     )
     parts = [head]
@@ -95,7 +96,11 @@ def fmt_alert(changes: list[tuple], trains: list[dict], route: dict) -> str:
         head = "📉 <b>Місць меншає!</b>"
     else:
         head = "🔔 <b>Зміна місць</b>"
-    lines = [head, f"🗺 {route['from_name']} → {route['to_name']}  📅 {route['date']}"]
+    lines = [
+        head,
+        f"🗺 <b>{route['from_name']} → {route['to_name']}</b>",
+        f"📅 <b>ДАТА ПОЇЗДКИ: {route['date']}</b>",
+    ]
     for num, code, was, now, direction in changes:
         t = train_map.get(num)
         dep = t["departure"] if t else "—"
