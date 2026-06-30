@@ -48,12 +48,14 @@ def buy_link(route: dict) -> str:
 
 
 def notification_action(mode: str, appeared: bool, live_id: int) -> str:
-    """send — нове повідомлення, edit — тиха правка, none — лише зберегти стан."""
+    """send — нове повідомлення з Telegram-пінгом, none — лише зберегти стан."""
     if mode == "any":
         return "send"
     if mode == "appear":
         return "send" if appeared else "none"
-    return "send" if appeared else ("edit" if live_id else "none")
+    # Раніше appear_decrease мовчки редагував старе повідомлення. Користувач
+    # бачив нові цифри, але Telegram не показував жодного сповіщення.
+    return "send"
 
 
 def fmt_status(trains: list[dict], route: dict) -> str:
@@ -167,21 +169,13 @@ class UZMonitor:
                  route["key"], appeared, avail, mode, action)
 
         if action == "send":
-            # нова поява місць → окреме повідомлення (вночі — без звуку)
-            message = fmt_alert(changes, trains, route) if mode == "any" else text
+            # Кожна відстежувана зміна — окреме повідомлення. Інакше Telegram
+            # не пінгує: редагування старого повідомлення завжди беззвучне.
+            message = fmt_alert(changes, trains, route)
             msg = await self.bot.send_message(chat, message, parse_mode="HTML",
                                               disable_web_page_preview=True,
                                               disable_notification=in_quiet_hours(route))
             storage.set_live_msg(route["key"], msg.message_id)
-        elif action == "edit":
-            # лише коливання (більше/менше) → мовчки редагуємо те саме повідомлення
-            try:
-                await self.bot.edit_message_text(text, chat_id=chat, message_id=live_id,
-                                                 parse_mode="HTML", disable_web_page_preview=True)
-            except Exception:
-                msg = await self.bot.send_message(chat, text, parse_mode="HTML",
-                                                  disable_web_page_preview=True)
-                storage.set_live_msg(route["key"], msg.message_id)
         # місць не лишилось → скинути, щоб наступна поява знову пінгнула
         if not avail:
             storage.set_live_msg(route["key"], 0)
